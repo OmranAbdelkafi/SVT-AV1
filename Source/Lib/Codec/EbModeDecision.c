@@ -1593,7 +1593,12 @@ void  inject_inter_candidates(
         // Bipred2Nx2N
         //----------------------
 #if ENCODER_MODE_CLEANUP
+#if DISABLE_IMPROVED_INTER_NSQ_BASED
+		if (picture_control_set_ptr->enc_mode <= ENC_M0 && context_ptr->blk_geom->shape == PART_N)
+
+#else
         if(picture_control_set_ptr->enc_mode <= ENC_M0)
+#endif
 
 #else
         if (picture_control_set_ptr->enc_mode <= ENC_M1 /*&& sequence_control_set_ptr->static_config.tune != TUNE_VQ*/)
@@ -1616,7 +1621,12 @@ void  inject_inter_candidates(
         // Unipred2Nx2N
         //----------------------
 #if ENCODER_MODE_CLEANUP
+#if DISABLE_IMPROVED_INTER_NSQ_BASED
+		if (picture_control_set_ptr->enc_mode <= ENC_M0 && context_ptr->blk_geom->shape == PART_N)
+
+#else
         if (picture_control_set_ptr->enc_mode <= ENC_M0)
+#endif
 
 #else
         if (picture_control_set_ptr->enc_mode <= ENC_M1 /*&& sequence_control_set_ptr->static_config.tune != TUNE_VQ*/)
@@ -1776,6 +1786,10 @@ void  inject_intra_candidates(
 #if MR_MODE
     disable_z2_prediction       = 0;
     disable_angle_refinement    = 0;
+#endif
+#if REDUCE_INTRA_NSQ_BASED
+	if (context_ptr->blk_geom->shape != PART_N) //OMRAN INTRA
+		angleDeltaCandidateCount =MIN( 1, angleDeltaCandidateCount);
 #endif
     angleDeltaCandidateCount = disable_angle_refinement ? 1: angleDeltaCandidateCount;
     

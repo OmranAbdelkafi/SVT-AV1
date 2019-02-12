@@ -638,7 +638,14 @@ void set_nfl(
     // 4                    4/3/2
 
     if (context_ptr->nfl_level == 0)
+#if REDUCE_NFL_NSQ_BASED
+		if (context_ptr->blk_geom->shape != PART_N)
+			context_ptr->full_recon_search_count = 6;
+		else
+			context_ptr->full_recon_search_count = MAX_NFL;
+#else
         context_ptr->full_recon_search_count = MAX_NFL;
+#endif
     else if (context_ptr->nfl_level == 1)
         context_ptr->full_recon_search_count = 8;
     else if (context_ptr->nfl_level == 2)

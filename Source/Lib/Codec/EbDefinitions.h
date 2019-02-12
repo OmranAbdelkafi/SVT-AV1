@@ -136,7 +136,9 @@ extern "C" {
 #define REST_REF_ONLY                                   0 //REST for ref frame only
 #define REDUCE_COPY_CDEF                                1
 
-
+#define REDUCE_NFL_NSQ_BASED							0
+#define REDUCE_INTRA_NSQ_BASED							1
+#define DISABLE_IMPROVED_INTER_NSQ_BASED				0
 /********************************************************/
 /****************** Pre-defined Values ******************/
 /********************************************************/
