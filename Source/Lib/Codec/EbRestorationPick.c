@@ -2012,6 +2012,23 @@ static void search_norestore_finish(const RestorationTileLimits *limits,
 
     rsc->sse += rusi->sse[RESTORE_NONE];  
 }
+
+
+
+
+#if REST_TEST
+static double collect_best_res_finish(RestSearchCtxt *rsc)
+{
+
+
+
+	reset_rsc(rsc);
+
+	collect_best_rest_unit_in_frame(rsc->cm, rsc->plane, rsc);
+
+	
+}
+#endif
 static double search_rest_type_finish(RestSearchCtxt *rsc, RestorationType rtype)
 {
 
@@ -2066,7 +2083,13 @@ void restoration_seg_search(
             highbd);       
 
         av1_foreach_rest_unit_in_frame_seg(rsc_p->cm, rsc_p->plane, rsc_on_tile, search_norestore_seg, rsc_p, pcs_ptr, segment_index);
+#if REST_TEST
+		if(cm->best_frame_rest[plane] == -1 || cm->best_frame_rest[plane] ==1)
+#endif
         av1_foreach_rest_unit_in_frame_seg(rsc_p->cm, rsc_p->plane, rsc_on_tile, search_wiener_seg,  rsc_p, pcs_ptr, segment_index);
+#if REST_TEST
+		if (cm->best_frame_rest[plane] == -1 || cm->best_frame_rest[plane] == 2)
+#endif
         av1_foreach_rest_unit_in_frame_seg(rsc_p->cm, rsc_p->plane, rsc_on_tile, search_sgrproj_seg, rsc_p, pcs_ptr, segment_index);       
 
     }
@@ -2120,7 +2143,12 @@ void rest_finish_search(Macroblock *x, Av1Common *const cm)
             if ((force_restore_type != RESTORE_TYPES) && (r != RESTORE_NONE) &&
                 (r != force_restore_type))
                 continue;
-
+#if REST_TEST
+			if (cm->best_frame_rest[plane] != -1 && cm->best_frame_rest[plane] == 1 && r == 2)
+				continue;
+			if (cm->best_frame_rest[plane] != -1 && cm->best_frame_rest[plane] == 2 && r == 1)
+				continue;
+#endif
             double cost = search_rest_type_finish(&rsc, r);
 
             if (r == 0 || cost < best_cost)
@@ -2131,6 +2159,12 @@ void rest_finish_search(Macroblock *x, Av1Common *const cm)
         }
 
         cm->rst_info[plane].frame_restoration_type = best_rtype;
+
+#if REST_TEST
+		cm->rest_cnt[plane][best_rtype]++;
+#endif
+
+
         if (force_restore_type != RESTORE_TYPES)
             assert(best_rtype == force_restore_type || best_rtype == RESTORE_NONE);
 

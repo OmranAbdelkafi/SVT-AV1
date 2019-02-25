@@ -13620,6 +13620,12 @@ extern "C" {
 #if FAST_SG
         int8_t  wn_filter_mode;
 #endif
+
+#if REST_TEST
+		int16_t  rest_cnt[3][5];
+
+		int16_t best_frame_rest[3];
+#endif
     } Av1Common;
 
     /**************************************

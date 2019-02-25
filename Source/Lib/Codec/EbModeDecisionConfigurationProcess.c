@@ -591,6 +591,65 @@ void SetSliceAndPictureChromaQpOffsets(
 
 }
 
+
+#if REST_TEST
+/******************************************************
+* Set the reference sg ep for a given picture
+******************************************************/
+void set_reference_rest(
+	PictureControlSet_t                    *picture_control_set_ptr)
+{
+
+	Av1Common* cm = picture_control_set_ptr->parent_pcs_ptr->av1_cm;
+	EbReferenceObject_t  * refObjL0, *refObjL1;
+	memset(cm->sg_frame_ep_cnt, 0, SGRPROJ_PARAMS * sizeof(int32_t));
+	cm->sg_frame_ep = 0;
+
+	cm->rest_cnt[0][0] = 0;
+	cm->rest_cnt[0][0] = 0;
+	cm->rest_cnt[0][0] = 0; 
+	cm->rest_cnt[0][0] = 0;
+	cm->rest_cnt[0][0] = 0;
+
+	cm->rest_cnt[1][0] = 0;
+	cm->rest_cnt[1][0] = 0;
+	cm->rest_cnt[1][0] = 0;
+	cm->rest_cnt[1][0] = 0;
+	cm->rest_cnt[1][0] = 0;
+
+
+	cm->rest_cnt[2][0] = 0;
+	cm->rest_cnt[2][0] = 0;
+	cm->rest_cnt[2][0] = 0;
+	cm->rest_cnt[2][0] = 0;
+	cm->rest_cnt[2][0] = 0;
+
+	// NADER: set cm->sg_ref_frame_ep[0] = cm->sg_ref_frame_ep[1] = -1 to perform all iterations
+	switch (picture_control_set_ptr->slice_type) {
+	case I_SLICE:
+		cm->best_frame_rest[0] = -1;
+		cm->best_frame_rest[1] = -1;
+		cm->best_frame_rest[2] = -1;
+		break;
+	case B_SLICE:
+		refObjL0 = (EbReferenceObject_t*)picture_control_set_ptr->ref_pic_ptr_array[REF_LIST_0]->objectPtr;
+		refObjL1 = (EbReferenceObject_t*)picture_control_set_ptr->ref_pic_ptr_array[REF_LIST_1]->objectPtr;
+		cm->best_frame_rest[0] = refObjL0->best_frame_rest[0];
+		cm->best_frame_rest[1] = refObjL0->best_frame_rest[1];
+		cm->best_frame_rest[2] = refObjL0->best_frame_rest[2];
+		break;
+	case P_SLICE:
+		refObjL0 = (EbReferenceObject_t*)picture_control_set_ptr->ref_pic_ptr_array[REF_LIST_0]->objectPtr;
+		cm->best_frame_rest[0] = refObjL0->best_frame_rest[0];
+		cm->best_frame_rest[1] = refObjL0->best_frame_rest[1];
+		cm->best_frame_rest[2] = refObjL0->best_frame_rest[2];
+		break;
+	default:
+		printf("SG: Not supported picture type");
+		break;
+	}
+}
+#endif
 #if FAST_SG
 /******************************************************
 * Set the reference sg ep for a given picture
@@ -2753,6 +2812,15 @@ void* ModeDecisionConfigurationKernel(void *input_ptr)
         set_reference_sg_ep(
             picture_control_set_ptr);
 #endif
+
+
+#if REST_TEST
+		// Set reference sg ep 
+		set_reference_rest(
+			picture_control_set_ptr);
+#endif
+
+
         SetGlobalMotionField(
             picture_control_set_ptr);
 

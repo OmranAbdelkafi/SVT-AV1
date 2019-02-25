@@ -1265,6 +1265,60 @@ void CopyStatisticsToRefObject(
     Av1Common* cm = picture_control_set_ptr->parent_pcs_ptr->av1_cm;
     ((EbReferenceObject_t*)picture_control_set_ptr->parent_pcs_ptr->reference_picture_wrapper_ptr->objectPtr)->sg_frame_ep = cm->sg_frame_ep;
 #endif
+#if REST_TEST
+	uint8_t 	best_rest_cnt = MAX(cm->rest_cnt[0][1], MAX(cm->rest_cnt[0][2], MAX(cm->rest_cnt[0][3], cm->rest_cnt[0][4])));
+	uint8_t best_frame_rest;
+
+	if (best_rest_cnt == cm->rest_cnt[0][1]) {
+		best_frame_rest = 1;
+	}else if (best_rest_cnt == cm->rest_cnt[0][2]) {
+		best_frame_rest = 2;
+	}
+	else if (best_rest_cnt == cm->rest_cnt[0][3]) {
+		best_frame_rest = 3;
+	}
+
+	((EbReferenceObject_t*)picture_control_set_ptr->parent_pcs_ptr->reference_picture_wrapper_ptr->objectPtr)->best_frame_rest[0] = best_frame_rest;
+
+
+
+	best_rest_cnt = MAX(cm->rest_cnt[1][1], MAX(cm->rest_cnt[1][2], MAX(cm->rest_cnt[1][3], cm->rest_cnt[1][4])));
+
+
+
+	if (best_rest_cnt == cm->rest_cnt[1][1]) {
+		best_frame_rest = 1;
+	}
+	else if (best_rest_cnt == cm->rest_cnt[1][2]) {
+		best_frame_rest = 2;
+	}
+	else if (best_rest_cnt == cm->rest_cnt[1][3]) {
+		best_frame_rest = 3;
+	}
+
+	((EbReferenceObject_t*)picture_control_set_ptr->parent_pcs_ptr->reference_picture_wrapper_ptr->objectPtr)->best_frame_rest[1] = best_frame_rest;
+
+
+
+
+
+
+	best_rest_cnt = MAX(cm->rest_cnt[2][1], MAX(cm->rest_cnt[2][2], MAX(cm->rest_cnt[2][3], cm->rest_cnt[2][4])));
+
+
+
+	if (best_rest_cnt == cm->rest_cnt[2][1]) {
+		best_frame_rest = 1;
+	}
+	else if (best_rest_cnt == cm->rest_cnt[2][2]) {
+		best_frame_rest = 2;
+	}
+	else if (best_rest_cnt == cm->rest_cnt[2][3]) {
+		best_frame_rest = 3;
+	}
+
+	((EbReferenceObject_t*)picture_control_set_ptr->parent_pcs_ptr->reference_picture_wrapper_ptr->objectPtr)->best_frame_rest[2] = best_frame_rest;
+#endif
 }
 
 

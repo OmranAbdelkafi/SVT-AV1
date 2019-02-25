@@ -39,6 +39,9 @@ typedef struct EbReferenceObject_s {
 #endif
 #if FAST_SG
     int8_t                          sg_frame_ep;
+#endif 
+#if REST_TEST
+	int8_t									best_frame_rest[3];
 #endif
 } EbReferenceObject_t;
 

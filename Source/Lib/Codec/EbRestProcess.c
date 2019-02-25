@@ -343,6 +343,9 @@ void* rest_kernel(void *input_ptr)
             cm->sg_frame_ep = best_ep;
 #endif
 
+
+			
+
             if (picture_control_set_ptr->parent_pcs_ptr->reference_picture_wrapper_ptr != NULL) {
                 // copy stat to ref object (intra_coded_area, Luminance, Scene change detection flags)
                 CopyStatisticsToRefObject(

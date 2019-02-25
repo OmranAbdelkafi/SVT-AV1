@@ -1335,8 +1335,85 @@ void av1_loop_restoration_filter_frame(Yv12BufferConfig *frame,
         copy_funs[plane](dst, frame);
     }
 }
+#if REST_TEST
+static void collect_best_foreach_rest_unit_in_tile(Av1Common *cm, const AV1PixelRect *tile_rect,
+	int32_t tile_row, int32_t tile_col, int32_t tile_cols,
+	int32_t hunits_per_tile, int32_t units_per_tile,
+	int32_t unit_size, int32_t ss_y,
+	rest_unit_visitor_t on_rest_unit) {
+	const int32_t tile_w = tile_rect->right - tile_rect->left;
+	const int32_t tile_h = tile_rect->bottom - tile_rect->top;
+	const int32_t ext_size = unit_size * 3 / 2;
 
-static void foreach_rest_unit_in_tile(const AV1PixelRect *tile_rect,
+	const int32_t tile_idx = tile_col + tile_row * tile_cols;
+	const int32_t unit_idx0 = tile_idx * units_per_tile;
+
+	int32_t y0 = 0, i = 0;
+	while (y0 < tile_h) {
+		int32_t remaining_h = tile_h - y0;
+		int32_t h = (remaining_h < ext_size) ? remaining_h : unit_size;
+
+		RestorationTileLimits limits;
+		limits.v_start = tile_rect->top + y0;
+		limits.v_end = tile_rect->top + y0 + h;
+		assert(limits.v_end <= tile_rect->bottom);
+		// Offset the tile upwards to align with the restoration processing stripe
+		const int32_t voffset = RESTORATION_UNIT_OFFSET >> ss_y;
+		limits.v_start = AOMMAX(tile_rect->top, limits.v_start - voffset);
+		if (limits.v_end < tile_rect->bottom) limits.v_end -= voffset;
+
+		int32_t x0 = 0, j = 0;
+		while (x0 < tile_w) {
+			int32_t remaining_w = tile_w - x0;
+			int32_t w = (remaining_w < ext_size) ? remaining_w : unit_size;
+
+			limits.h_start = tile_rect->left + x0;
+			limits.h_end = tile_rect->left + x0 + w;
+			assert(limits.h_end <= tile_rect->right);
+
+			const int32_t unit_idx = unit_idx0 + i * hunits_per_tile + j;
+			
+			
+			for (int plane = 0; plane < 3; plane++) {
+				const RestorationUnitInfo *rui =
+					&cm->rst_info[plane].unit_info[unit_idx];
+
+
+				cm->rest_cnt[plane][rui->restoration_type]++;
+
+			}
+
+			///
+			x0 += w;
+			++j;
+		}
+
+		y0 += h;
+		++i;
+	}
+}
+
+
+void collect_best_rest_unit_in_frame(Av1Common *cm, int32_t plane,
+	rest_tile_start_visitor_t on_tile,
+	rest_unit_visitor_t on_rest_unit,
+	void *priv) {
+	const int32_t is_uv = plane > 0;
+	const int32_t ss_y = is_uv && cm->subsampling_y;
+
+	const RestorationInfo *rsi = &cm->rst_info[plane];
+
+	const AV1PixelRect tile_rect = whole_frame_rect(cm, is_uv);
+
+	if (on_tile) on_tile(0, 0, priv);
+
+
+	collect_best_foreach_rest_unit_in_tile(cm, &tile_rect, 0, 0, 1, rsi->horz_units_per_tile,
+		rsi->units_per_tile, rsi->restoration_unit_size,
+		ss_y, on_rest_unit);
+}
+#endif
+static void foreach_rest_unit_in_tile(Av1Common *cm,const AV1PixelRect *tile_rect,
     int32_t tile_row, int32_t tile_col, int32_t tile_cols,
     int32_t hunits_per_tile, int32_t units_per_tile,
     int32_t unit_size, int32_t ss_y,
@@ -1374,6 +1451,15 @@ static void foreach_rest_unit_in_tile(const AV1PixelRect *tile_rect,
 
             const int32_t unit_idx = unit_idx0 + i * hunits_per_tile + j;
             on_rest_unit(&limits, tile_rect, unit_idx, priv);
+/*
+			for (int plane = 0; plane < 3; plane++) {
+				const RestorationUnitInfo *rui =
+					&cm->rst_info[plane].unit_info[unit_idx];
+
+
+				cm->rest_cnt[plane][rui->restoration_type]++;
+
+			}*/
 
             x0 += w;
             ++j;
@@ -1397,12 +1483,12 @@ void av1_foreach_rest_unit_in_frame(Av1Common *cm, int32_t plane,
 
     if (on_tile) on_tile(0, 0, priv);
 
-    foreach_rest_unit_in_tile(&tile_rect, 0, 0, 1, rsi->horz_units_per_tile,
+    foreach_rest_unit_in_tile(cm,&tile_rect, 0, 0, 1, rsi->horz_units_per_tile,
         rsi->units_per_tile, rsi->restoration_unit_size,
         ss_y, on_rest_unit, priv);
 }
 #if REST_M
-static void foreach_rest_unit_in_tile_seg(const AV1PixelRect *tile_rect,
+static void foreach_rest_unit_in_tile_seg(Av1Common *cm,const AV1PixelRect *tile_rect,
     int32_t tile_row, int32_t tile_col, int32_t tile_cols,
     int32_t hunits_per_tile, int32_t units_per_tile,
     int32_t unit_size, int32_t ss_y,
@@ -1499,7 +1585,7 @@ void av1_foreach_rest_unit_in_frame_seg(Av1Common *cm, int32_t plane,
 
     if (on_tile) on_tile(0, 0, priv);  //will set rsc->tile_strip0=0;
 
-    foreach_rest_unit_in_tile_seg(&tile_rect, 0, 0, 1, rsi->horz_units_per_tile,
+    foreach_rest_unit_in_tile_seg(cm,&tile_rect, 0, 0, 1, rsi->horz_units_per_tile,
         rsi->units_per_tile, rsi->restoration_unit_size,
         ss_y, on_rest_unit, priv,
         rsi->vert_units_per_tile,
