@@ -37,8 +37,10 @@ extern "C" {
 #endif
 
 //FOR DEBUGGING - Do not remove
-#define NO_ENCDEC         0 // bypass encDec to test cmpliance of MD. complained achieved when skip_flag is OFF. Port sample code from VCI-SW_AV1_Candidate1 branch
-#define DEBUG_TPL         0 // Prints to debug TPL
+#define NO_ENCDEC               0 // bypass encDec to test cmpliance of MD. complained achieved when skip_flag is OFF. Port sample code from VCI-SW_AV1_Candidate1 branch
+#define DEBUG_TPL               0 // Prints to debug TPL
+#define DETAILED_FRAME_OUTPUT   0 // Prints detailed frame output from the library for debugging
+#define TUNE_CHROMA_SSIM        0 // Allows for Chroma and SSIM BDR-based Tuning
 #ifdef __cplusplus
 }
 #endif // __cplusplus

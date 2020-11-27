@@ -7281,56 +7281,6 @@ void recode_loop_update_q(
                                    &frame_over_shoot_limit);
   if (frame_over_shoot_limit == 0) frame_over_shoot_limit = 1;
 
-#if 0
-  if (ppcs_ptr->frm_hdr.frame_type == KEY_FRAME && rc->this_key_frame_forced &&
-      rc->projected_frame_size < rc->max_frame_bandwidth) {
-    AV1_COMMON *const cm = &ppcs_ptr->av1_cm;
-    int64_t kf_err;
-    const int64_t high_err_target = cpi->ambient_err;
-    const int64_t low_err_target = cpi->ambient_err >> 1;
-
-#if CONFIG_AV1_HIGHBITDEPTH
-    if (cm->seq_params.use_highbitdepth) {
-      kf_err = aom_highbd_get_y_sse(cpi->source, &cm->cur_frame->buf);
-    } else {
-      kf_err = aom_get_y_sse(cpi->source, &cm->cur_frame->buf);
-    }
-#else
-    kf_err = aom_get_y_sse(cpi->source, &cm->cur_frame->buf);
-#endif
-    // Prevent possible divide by zero error below for perfect KF
-    kf_err += !kf_err;
-
-    // The key frame is not good enough or we can afford
-    // to make it better without undue risk of popping.
-    if ((kf_err > high_err_target &&
-         rc->projected_frame_size <= frame_over_shoot_limit) ||
-        (kf_err > low_err_target &&
-         rc->projected_frame_size <= frame_under_shoot_limit)) {
-      // Lower q_high
-      *q_high = AOMMAX(*q - 1, *q_low);
-
-      // Adjust Q
-      *q = (int)((*q * high_err_target) / kf_err);
-      *q = AOMMIN(*q, (*q_high + *q_low) >> 1);
-    } else if (kf_err < low_err_target &&
-               rc->projected_frame_size >= frame_under_shoot_limit) {
-      // The key frame is much better than the previous frame
-      // Raise q_low
-      *q_low = AOMMIN(*q + 1, *q_high);
-
-      // Adjust Q
-      *q = (int)((*q * low_err_target) / kf_err);
-      *q = AOMMIN(*q, (*q_high + *q_low + 1) >> 1);
-    }
-
-    // Clamp Q to upper and lower limits:
-    *q = clamp(*q, *q_low, *q_high);
-    *loop = (*q != last_q);
-    return;
-  }
-#endif
-
   if (recode_loop_test(ppcs_ptr, frame_over_shoot_limit, frame_under_shoot_limit, *q,
                        AOMMAX(*q_high, top_index), bottom_index)) {
       const int width  = ppcs_ptr->av1_cm->frm_size.frame_width;

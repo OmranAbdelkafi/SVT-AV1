@@ -2908,9 +2908,7 @@ EbErrorType signal_derivation_enc_dec_kernel_oq(
     set_obmc_controls(context_ptr, context_ptr->md_pic_obmc_level);
 
     // Set enable_inter_intra @ MD
-#if  CLEANUP_INTER_INTRA
     //Block level switch, has to follow the picture level
-#endif
     // inter intra pred                      Settings
     // 0                                     OFF
     // 1                                     FULL
@@ -3025,11 +3023,6 @@ EbErrorType signal_derivation_enc_dec_kernel_oq(
         context_ptr->md_palette_level = pcs_ptr->parent_pcs_ptr->palette_level;
 
     // Set block_based_depth_refinement_level
-#if 0 // To try for M6 and lower presets
-    Conservative Levels:
-    context_ptr->block_based_depth_refinement_level = 1;
-    context_ptr->block_based_depth_refinement_level = 2;
-#endif
     if (enc_mode <= ENC_M5)
         context_ptr->block_based_depth_refinement_level = 0;
     else if (enc_mode <= ENC_M6)

@@ -23,7 +23,6 @@
 #include "EbPictureDemuxResults.h"
 #include "EbLog.h"
 #include "EbSvtAv1ErrorCodes.h"
-#define DETAILED_FRAME_OUTPUT 0
 
 /**************************************
  * Type Declarations

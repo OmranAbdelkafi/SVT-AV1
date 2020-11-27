@@ -4764,10 +4764,6 @@ void  inject_intra_candidates(
         disable_z2_prediction       = 0;
         disable_angle_prediction    = 0;
     }
-#if MR_MODE
-    disable_z2_prediction       = 0;
-    disable_angle_prediction    = 0;
-#endif
     for (open_loop_intra_candidate = intra_mode_start; open_loop_intra_candidate <= intra_mode_end ; ++open_loop_intra_candidate) {
         if (av1_is_directional_mode((PredictionMode)open_loop_intra_candidate)) {
             if (!disable_angle_prediction &&
