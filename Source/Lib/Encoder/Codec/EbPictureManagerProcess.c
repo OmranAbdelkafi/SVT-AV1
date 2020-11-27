@@ -26,20 +26,6 @@
 #include "EbEntropyCoding.h"
 #include "EbLog.h"
 
-#if !FEATURE_TPL_SOP
-/***************************************
- * Context
- ***************************************/
-typedef struct PictureManagerContext {
-    EbDctor dctor;
-    EbFifo *picture_input_fifo_ptr;
-    EbFifo *picture_manager_output_fifo_ptr;
-    EbFifo *picture_control_set_fifo_ptr;
-#if FEATURE_PA_ME
-    uint64_t pmgr_dec_order;
-#endif
-} PictureManagerContext;
-#endif
 // Token buffer is only used for palette tokens.
 static INLINE unsigned int get_token_alloc(int mb_rows, int mb_cols, int sb_size_log2,
                                            const int num_planes) {
@@ -260,24 +246,11 @@ static uint8_t tpl_setup_me_refs(
                                       (uint32_t)(curr_poc + tpl_base_minigop - base_poc);
     uint32_t pred_struct_idx = curr_minigop_entry_idx + init_idx;
 
-#if !TUNE_INL_TPL_ENHANCEMENT
-    // 17/18/19, which is out side of the minigop
-    *trailing_frames = (!pcs_tpl_base_ptr->idr_flag) && (curr_poc > base_poc);
-#endif
-
     // Get the ref entry point of trailing frames, not good here
     if (*trailing_frames && pred_struct_idx + tpl_base_minigop < base_pred_struct_ptr->pred_struct_entry_count)
         pred_struct_idx += tpl_base_minigop;
 
     PredictionStructureEntry *frame_pred_entry = base_pred_struct_ptr->pred_struct_entry_ptr_array[pred_struct_idx];
-#if !TUNE_INL_TPL_ENHANCEMENT
-    EB_MEMSET(pcs_tpl_group_frame_ptr->tpl_ref_ds_ptr_array[REF_LIST_0],
-            0,
-            REF_LIST_MAX_DEPTH * sizeof(EbDownScaledBufDescPtrArray));
-    EB_MEMSET(pcs_tpl_group_frame_ptr->tpl_ref_ds_ptr_array[REF_LIST_1],
-            0,
-            REF_LIST_MAX_DEPTH * sizeof(EbDownScaledBufDescPtrArray));
-#endif
 
     uint8_t ref_list_count = 0;
     for (uint8_t list_index = REF_LIST_0; list_index <= REF_LIST_1; list_index++) {
@@ -286,11 +259,7 @@ static uint8_t tpl_setup_me_refs(
         if (*trailing_frames) {
             ref_list_count = (list_index == REF_LIST_0) ?
                 frame_pred_entry->ref_list0.reference_list_count :
-#if ENABLE_TPL_ZERO_LAD
                 0; //Jing: why remove ref1? for poc17, it should refer to poc18 in L1
-#else
-                frame_pred_entry->ref_list1.reference_list_count;
-#endif
             //Jing: We can set the it as the same logic of ref_list_count_try in PD kernel
             //      But need to make sure change them at the same time.
             //      Now for simplicity, just limit it as 2 for trailing frames
@@ -314,13 +283,7 @@ static uint8_t tpl_setup_me_refs(
 
         for (uint8_t ref_idx = 0; ref_idx < ref_list_count; ref_idx++) {
             EbBool ref_in_slide_window = EB_FALSE;
-#if FEATURE_IN_LOOP_TPL
-#if TUNE_INL_TPL_ENHANCEMENT
             pcs_tpl_group_frame_ptr->tpl_data.ref_in_slide_window[list_index][*ref_count_ptr] = EB_FALSE;
-#else
-            pcs_tpl_group_frame_ptr->ref_in_slide_window[list_index][*ref_count_ptr] = EB_FALSE;
-#endif
-#endif
             uint64_t ref_poc = pcs_tpl_group_frame_ptr->ref_pic_poc_array[list_index][ref_idx];
             if (*trailing_frames) {
                 int delta_poc = (list_index == REF_LIST_0) ?
@@ -331,41 +294,15 @@ static uint8_t tpl_setup_me_refs(
 
             for (uint32_t j = 0; j < pcs_tpl_base_ptr->tpl_group_size; j++) {
                 if (ref_poc == pcs_tpl_base_ptr->tpl_group[j]->picture_number) {
-#if TUNE_INL_TPL_ENHANCEMENT
                     pcs_tpl_group_frame_ptr->tpl_data.tpl_ref_ds_ptr_array[list_index][*ref_count_ptr] = pcs_tpl_base_ptr->tpl_group[j]->ds_pics;
-#else
-                    pcs_tpl_group_frame_ptr->tpl_ref_ds_ptr_array[list_index][*ref_count_ptr] = pcs_tpl_base_ptr->tpl_group[j]->ds_pics;
-#endif
                     ref_in_slide_window = EB_TRUE;
-#if FEATURE_IN_LOOP_TPL
-#if TUNE_INL_TPL_ENHANCEMENT
                     pcs_tpl_group_frame_ptr->tpl_data.ref_in_slide_window[list_index][*ref_count_ptr] = EB_TRUE;
-#else
-                    pcs_tpl_group_frame_ptr->ref_in_slide_window[list_index][*ref_count_ptr] = EB_TRUE;
-#endif
-#endif
                     *ref_count_ptr += 1;
                     break;
                 }
             }
-#if !TUNE_IME_REUSE_TPL_RESULT
-            if (list_index == REF_LIST_1 && ref_in_slide_window) {
-                // Remove duplicate refs from list1 which is already in list0
-                for (uint8_t i=0; i<*ref0_count; i++) {
-#if TUNE_INL_TPL_ENHANCEMENT
-                    if (pcs_tpl_group_frame_ptr->tpl_data.tpl_ref_ds_ptr_array[0][i].picture_number == ref_poc) {
-#else
-                    if (pcs_tpl_group_frame_ptr->tpl_ref_ds_ptr_array[0][i].picture_number == ref_poc) {
-#endif
-                        *ref_count_ptr -= 1;
-                        break;
-                    }
-                }
-            }
-#endif
 
             if (!ref_in_slide_window) {
-#if  FEATURE_PA_ME
                 if (scs_ptr->in_loop_me == 0) {
                     EbPaReferenceObject * ref_obj =
                         (EbPaReferenceObject *)pcs_tpl_group_frame_ptr->ref_pa_pic_ptr_array[list_index][*ref_count_ptr]->object_ptr;
@@ -379,43 +316,23 @@ static uint8_t tpl_setup_me_refs(
 
                     *ref_count_ptr += 1;
                 }else{
-#endif
                 ReferenceQueueEntry* ref_entry_ptr = search_ref_in_ref_queue(scs_ptr->encode_context_ptr, ref_poc);
                 if (ref_entry_ptr && ref_entry_ptr->reference_available) {
-#if TUNE_INL_TPL_ENHANCEMENT
                     pcs_tpl_group_frame_ptr->tpl_data.tpl_ref_ds_ptr_array[list_index][*ref_count_ptr] =
-#else
-                    pcs_tpl_group_frame_ptr->tpl_ref_ds_ptr_array[list_index][*ref_count_ptr] =
-#endif
                         ((EbReferenceObject *)ref_entry_ptr->reference_object_ptr->object_ptr)->ds_pics;
-#if TUNE_INL_ME_RECON_INPUT
-#if TUNE_INL_TPL_ENHANCEMENT
                     pcs_tpl_group_frame_ptr->tpl_data.tpl_ref_ds_ptr_array[list_index][*ref_count_ptr].picture_ptr =
                         ((EbReferenceObject *)ref_entry_ptr->reference_object_ptr->object_ptr)->input_picture;
                     pcs_tpl_group_frame_ptr->tpl_data.tpl_ref_ds_ptr_array[list_index][*ref_count_ptr].sixteenth_picture_ptr =
                         ((EbReferenceObject *)ref_entry_ptr->reference_object_ptr->object_ptr)->sixteenth_input_picture;
                     pcs_tpl_group_frame_ptr->tpl_data.tpl_ref_ds_ptr_array[list_index][*ref_count_ptr].quarter_picture_ptr =
                         ((EbReferenceObject *)ref_entry_ptr->reference_object_ptr->object_ptr)->quarter_input_picture;
-#else
-                    pcs_tpl_group_frame_ptr->tpl_ref_ds_ptr_array[list_index][*ref_count_ptr].picture_ptr =
-                        ((EbReferenceObject *)ref_entry_ptr->reference_object_ptr->object_ptr)->input_picture;
-                    pcs_tpl_group_frame_ptr->tpl_ref_ds_ptr_array[list_index][*ref_count_ptr].sixteenth_picture_ptr =
-                        ((EbReferenceObject *)ref_entry_ptr->reference_object_ptr->object_ptr)->sixteenth_input_picture;
-                    pcs_tpl_group_frame_ptr->tpl_ref_ds_ptr_array[list_index][*ref_count_ptr].quarter_picture_ptr =
-                        ((EbReferenceObject *)ref_entry_ptr->reference_object_ptr->object_ptr)->quarter_input_picture;
-#endif
-#endif
                     *ref_count_ptr += 1;
                 }
-#if  FEATURE_PA_ME
                 }
-#endif
             }
         }
     }
 
-#if FEATURE_IN_LOOP_TPL
-#if TUNE_INL_TPL_ENHANCEMENT
     pcs_tpl_group_frame_ptr->tpl_data.tpl_ref0_count = *ref0_count;
     pcs_tpl_group_frame_ptr->tpl_data.tpl_ref1_count = *ref1_count;
 
@@ -431,18 +348,10 @@ static uint8_t tpl_setup_me_refs(
         pcs_tpl_group_frame_ptr->tpl_data.tpl_decode_order =
             pcs_tpl_base_ptr->picture_number + frame_pred_entry->decode_order + 1;
     }
-#else
-    pcs_tpl_group_frame_ptr->tpl_ref0_count = *ref0_count;
-    pcs_tpl_group_frame_ptr->tpl_ref1_count = *ref1_count;
-#endif
-#endif
     return 0;
 }
-#if TUNE_TPL_OPT
 void set_tpl_controls(
     PictureParentControlSet       *pcs_ptr, uint8_t tpl_level);
-#endif
-#if TUNE_INL_TPL_ENHANCEMENT
 static EbErrorType tpl_init_pcs_tpl_data(
     PictureParentControlSet         *pcs_tpl_group_frame_ptr,
     PictureParentControlSet         *pcs_tpl_base_ptr,
@@ -476,7 +385,6 @@ static EbErrorType tpl_init_pcs_tpl_data(
     }
     return 0;
 }
-#endif
 
 
  EbErrorType tpl_get_open_loop_me(
@@ -484,56 +392,28 @@ static EbErrorType tpl_init_pcs_tpl_data(
     SequenceControlSet              *scs_ptr,
     PictureParentControlSet         *pcs_tpl_base_ptr) {
 
-#if FEATURE_PA_ME
     if (scs_ptr->static_config.enable_tpl_la &&
         pcs_tpl_base_ptr->temporal_layer_index == 0) {
-#else
-    if (scs_ptr->in_loop_me &&
-            scs_ptr->static_config.enable_tpl_la &&
-            pcs_tpl_base_ptr->temporal_layer_index == 0) {
-#endif
         // Do tpl ME to get ME results
         for (uint32_t i = 0; i < pcs_tpl_base_ptr->tpl_group_size; i++) {
             PictureParentControlSet* pcs_tpl_group_frame_ptr = pcs_tpl_base_ptr->tpl_group[i];
-#if !FEATURE_IN_LOOP_TPL
-            if (!pcs_tpl_group_frame_ptr->tpl_me_done) {
-#endif
             uint8_t ref_list0_count = 0;
             uint8_t ref_list1_count = 0;
             EbBool  is_trailing_tpl_frame = EB_FALSE;
-#if TUNE_INL_TPL_ENHANCEMENT
             tpl_init_pcs_tpl_data(pcs_tpl_group_frame_ptr,
                 pcs_tpl_base_ptr,
                 &is_trailing_tpl_frame);
 
             if (pcs_tpl_group_frame_ptr->tpl_data.tpl_slice_type != I_SLICE) {
-#else
-#if FEATURE_IN_LOOP_TPL
-            pcs_tpl_group_frame_ptr->tpl_ref0_count = 0;
-            pcs_tpl_group_frame_ptr->tpl_ref1_count = 0;
-            EB_MEMSET(pcs_tpl_group_frame_ptr->ref_in_slide_window,
-                0,
-                MAX_NUM_OF_REF_PIC_LIST*REF_LIST_MAX_DEPTH * sizeof(EbBool));
-
-            if (pcs_tpl_group_frame_ptr->slice_type != I_SLICE) {
-#else
-            if (pcs_tpl_group_frame_ptr->slice_type != I_SLICE /*&&
-                    pcs_tpl_group_frame_ptr != pcs_tpl_base_ptr*/) {
-#endif
-#endif
 
                 tpl_setup_me_refs(scs_ptr,
                         pcs_tpl_group_frame_ptr, pcs_tpl_base_ptr,
                         &ref_list0_count, &ref_list1_count,
                         &is_trailing_tpl_frame);
 
-#if FEATURE_PA_ME
                 if (scs_ptr->in_loop_me == 0)
                 continue;
-#endif
-#if FEATURE_IN_LOOP_TPL
                 if (!pcs_tpl_group_frame_ptr->tpl_me_done){
-#endif
                     // Initialize Segments
                     pcs_tpl_group_frame_ptr->tpl_me_segments_column_count = 1;//scs_ptr->tf_segment_column_count;
                     pcs_tpl_group_frame_ptr->tpl_me_segments_row_count = 1;//scs_ptr->tf_segment_row_count;
@@ -835,9 +715,7 @@ void *picture_manager_kernel(void *input_ptr) {
                             [encode_context_ptr->reference_picture_queue_tail_index];
                     reference_entry_ptr->picture_number        = pcs_ptr->picture_number;
                     reference_entry_ptr->reference_object_ptr  = (EbObjectWrapper *)NULL;
-#if FEATURE_PA_ME
                     reference_entry_ptr->ref_wraper = pcs_ptr->reference_picture_wrapper_ptr; //at this time only the src data is valid
-#endif
                     reference_entry_ptr->release_enable        = EB_TRUE;
                     reference_entry_ptr->reference_available   = EB_FALSE;
                     reference_entry_ptr->slice_type            = pcs_ptr->slice_type;
@@ -884,14 +762,6 @@ void *picture_manager_kernel(void *input_ptr) {
                         encode_context_ptr->app_callback_ptr,
                         EB_ENC_PM_ERROR6);
                 }
-#if  !FEATURE_PA_ME
-                // Release the Reference Buffer once we know it is not a reference
-                if (pcs_ptr->is_used_as_reference_flag == EB_FALSE) {
-                    // Release the nominal live_count value
-                    svt_release_object(pcs_ptr->reference_picture_wrapper_ptr);
-                    pcs_ptr->reference_picture_wrapper_ptr = (EbObjectWrapper *)NULL;
-                }
-#endif
             break;
 
         case EB_PIC_REFERENCE:
@@ -1007,23 +877,17 @@ void *picture_manager_kernel(void *input_ptr) {
 
                     availability_flag = EB_TRUE;
                     if (entry_pcs_ptr->decode_order != decode_order &&
-#if FEATURE_PA_ME
 #if FEATURE_LAP_ENABLED_VBR
                     (scs_ptr->enable_dec_order || use_input_stat(scs_ptr) || scs_ptr->lap_enabled ))
 #else
                         ((scs_ptr->enable_dec_order) || use_input_stat(scs_ptr)))
 #endif
-#else
-                        use_input_stat(scs_ptr))
-#endif
                         availability_flag = EB_FALSE;
 
- #if FEATURE_PA_ME
                     //pic mgr starts pictures in dec order (no need to wait for feedback)
                     if(entry_scs_ptr->enable_pic_mgr_dec_order)
                         if (entry_pcs_ptr->picture_number > 0 && entry_pcs_ptr->decode_order != context_ptr->pmgr_dec_order + 1)
                             availability_flag = EB_FALSE;
-#endif
                     // Check RefList0 Availability
                     for (uint8_t ref_idx = 0; ref_idx < entry_pcs_ptr->ref_list0_count; ++ref_idx) {
                         //if (entry_pcs_ptr->ref_list0_count)  // NM: to double check.
@@ -1161,9 +1025,7 @@ void *picture_manager_kernel(void *input_ptr) {
                         child_pcs_ptr->enc_dec_coded_sb_count = 0;
                         child_pcs_ptr->parent_pcs_ptr->av1_cm->rst_tmpbuf = child_pcs_ptr->rst_tmpbuf;
 
-#if FEATURE_PA_ME
                         context_ptr->pmgr_dec_order = child_pcs_ptr->parent_pcs_ptr->decode_order;
-#endif
                         //3.make all  init for ChildPCS
                         pic_width_in_sb = (uint8_t)((entry_pcs_ptr->aligned_width +
                                                      entry_scs_ptr->sb_size_pix - 1) /
@@ -1650,10 +1512,8 @@ void *picture_manager_kernel(void *input_ptr) {
 
 #if FEATURE_INL_ME
 
-#if  FEATURE_TPL_SOP
                         // Get TPL ME
                         if (scs_ptr->in_loop_me|| scs_ptr->static_config.enable_tpl_la == 0)
-#endif
                         tpl_get_open_loop_me(context_ptr, scs_ptr, child_pcs_ptr->parent_pcs_ptr);
 
                         const uint32_t segment_counts =  child_pcs_ptr->parent_pcs_ptr->inloop_me_segments_total_count;

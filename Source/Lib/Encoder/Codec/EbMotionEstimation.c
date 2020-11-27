@@ -3266,24 +3266,13 @@ EbErrorType motion_estimate_sb(
     uint8_t prune_ref = context_ptr->enable_hme_flag && context_ptr->enable_hme_level2_flag &&
         context_ptr->me_type != ME_MCTF;
 #endif
-#if !TUNE_INL_TPL_ENHANCEMENT
-#if FEATURE_INL_ME
-#if !TUNE_IME_REUSE_TPL_RESULT
-    prune_ref = (context_ptr->me_type == ME_TPL) ? 0 : prune_ref;
-#endif
-#endif
-#endif
     //init hme results buffer
     for (uint32_t li = 0; li < MAX_NUM_OF_REF_PIC_LIST; li++) {
         for (uint32_t ri = 0; ri < REF_LIST_MAX_DEPTH; ri++) {
 #if !FEATURE_INL_ME
             if (context_ptr->me_alt_ref == EB_FALSE)
 #else
-#if TUNE_INL_TPL_ENHANCEMENT
             if (context_ptr->me_type != ME_MCTF)
-#else
-            if(context_ptr->me_type != ME_MCTF && context_ptr->me_type != ME_TPL)
-#endif
 #endif
 #if !FEATURE_INTER_INTRA_LEVELS
                 pcs_ptr->pa_me_data->me_results[sb_index]->do_comp[li][ri] = 1;
@@ -3484,15 +3473,7 @@ EbErrorType open_loop_intra_search_mb(
             EbBool   enable_paeth                = pcs_ptr->scs_ptr->static_config.enable_paeth == DEFAULT ? EB_TRUE : (EbBool) pcs_ptr->scs_ptr->static_config.enable_paeth;
             EbBool   enable_smooth               = pcs_ptr->scs_ptr->static_config.enable_smooth == DEFAULT ? EB_TRUE : (EbBool) pcs_ptr->scs_ptr->static_config.enable_smooth;
             uint8_t intra_mode_end =
-#if ENABLE_TPL_TRAILING
-#if TUNE_TPL_OPT
                 pcs_ptr->tpl_data.tpl_ctrls.tpl_opt_flag
-#else
-                pcs_ptr->tpl_data.tpl_opt_flag
-#endif
-#else
-                pcs_ptr->tpl_opt_flag
-#endif
                     ? DC_PRED
                     : enable_paeth ? PAETH_PRED : enable_smooth ? SMOOTH_H_PRED : D67_PRED;
             PredictionMode best_mode       = DC_PRED;

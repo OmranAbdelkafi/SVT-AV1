@@ -1184,74 +1184,27 @@ void *motion_estimation_kernel(void *input_ptr) {
                                            sb_origin_y,
                                            context_ptr->me_context_ptr,
                                            input_picture_ptr);
-#if !FEATURE_IN_LOOP_TPL|| FIX_GM_COMPUTATION
                         svt_block_on_mutex(pcs_ptr->me_processed_sb_mutex);
                         pcs_ptr->me_processed_sb_count++;
-
-#if FIX_GM_COMPUTATION
                         // We need to finish ME for all SBs to do GM
                         if (pcs_ptr->me_processed_sb_count == pcs_ptr->sb_total_count) {
-#if FEATURE_GM_OPT
                             if (pcs_ptr->gm_ctrls.enabled)
-#else
-                            if (context_ptr->me_context_ptr->compute_global_motion)
-#endif
                                 global_motion_estimation(
-#if FEATURE_GM_OPT
+
                                     pcs_ptr, input_picture_ptr);
-#else
-                                    pcs_ptr, context_ptr->me_context_ptr, input_picture_ptr);
-#endif
                             else
                             // Initilize global motion to be OFF when GM is OFF
                                 memset(pcs_ptr->is_global_motion, EB_FALSE, MAX_NUM_OF_REF_PIC_LIST * REF_LIST_MAX_DEPTH);
                         }
-#endif
+
                         svt_release_mutex(pcs_ptr->me_processed_sb_mutex);
-#endif
+
                     }
                 }
             }
-#if !FIX_GM_COMPUTATION
-            // Global motion estimation
-            // TODO: create an other kernel ?
-#if FEATURE_GM_OPT
-            if (pcs_ptr->gm_ctrls.enabled &&
-#else
-            if (context_ptr->me_context_ptr->compute_global_motion &&
-#endif
-#if FEATURE_IN_LOOP_TPL
-                segment_index == 0) {
-#else
-                // Compute only when ME of all 64x64 SBs is performed
-                pcs_ptr->me_processed_sb_count == pcs_ptr->sb_total_count) {
-#endif
-
-#if FEATURE_INL_ME
-                if (!scs_ptr->in_loop_me)
-#if FEATURE_GM_OPT
-                    global_motion_estimation(
-                        pcs_ptr, input_picture_ptr);
-#else
-                    global_motion_estimation(
-                        pcs_ptr, context_ptr->me_context_ptr, input_picture_ptr);
-#endif
-#else
-                global_motion_estimation(
-                    pcs_ptr, context_ptr->me_context_ptr, input_picture_ptr);
-#endif
-            }
-#endif
             if (
-#if TUNE_TPL_OIS
                 scs_ptr->in_loop_ois == 0 &&
-#endif
-#if !ENABLE_TPL_ZERO_LAD
-                scs_ptr->static_config.look_ahead_distance != 0 &&
-#endif
-#if FEATURE_IN_LOOP_TPL
                 (!scs_ptr->in_loop_me || pcs_ptr->slice_type == I_SLICE) &&
-#endif
                 scs_ptr->static_config.enable_tpl_la)
                 for (uint32_t y_sb_index = y_sb_start_index; y_sb_index < y_sb_end_index;
                      ++y_sb_index)
@@ -1281,7 +1234,6 @@ void *motion_estimation_kernel(void *input_ptr) {
                     y_sb_start_index,
                     y_sb_end_index);
 
-#if TUNE_INL_TPL_ENHANCEMENT
             if (scs_ptr->static_config.look_ahead_distance != 0 &&
                     pcs_ptr->picture_number > 0 &&
                     scs_ptr->in_loop_me)
@@ -1293,7 +1245,6 @@ void *motion_estimation_kernel(void *input_ptr) {
                     x_sb_end_index,
                     y_sb_start_index,
                     y_sb_end_index);
-#endif
 #if !FEATURE_FIRST_PASS_RESTRUCTURE
             // ZZ SSDs Computation
             // 1 lookahead frame is needed to get valid (0,0) SAD
@@ -1735,9 +1686,7 @@ void *inloop_me_kernel(void *input_ptr) {
     uint32_t segment_col_count = 0;
     uint32_t segment_row_count = 0;
 
-#if TUNE_IME_REUSE_TPL_RESULT
     EbBool skip_me = EB_FALSE;
-#endif
     for (;;) {
         // Get Input Full Object
         EB_GET_FULL_OBJECT(context_ptr->input_fifo_ptr,
@@ -1776,16 +1725,10 @@ void *inloop_me_kernel(void *input_ptr) {
                 for (int i = 0; i<= context_ptr->me_context_ptr->num_of_list_to_search; i++) {
                     for (int j=0; j< context_ptr->me_context_ptr->num_of_ref_pic_to_search[i];j++) {
                         context_ptr->me_context_ptr->me_ds_ref_array[i][j] =
-#if TUNE_INL_TPL_ENHANCEMENT
                             ppcs_ptr->tpl_data.tpl_ref_ds_ptr_array[i][j];
-#else
-                            ppcs_ptr->tpl_ref_ds_ptr_array[i][j];
-#endif
                     }
                 }
-#if TUNE_IME_REUSE_TPL_RESULT
                 skip_me = EB_FALSE;
-#endif
             } else if (ppcs_ptr->slice_type != I_SLICE) {
                 // ME Kernel Signal(s) derivation
                 signal_derivation_me_kernel_oq(scs_ptr, ppcs_ptr, (MotionEstimationContext_t*)context_ptr);
@@ -1813,19 +1756,15 @@ void *inloop_me_kernel(void *input_ptr) {
                         context_ptr->me_context_ptr->me_ds_ref_array[i][j].picture_number =
                             ppcs_ptr->ref_pic_poc_array[i][j];
 
-#if TUNE_INL_ME_RECON_INPUT
                         context_ptr->me_context_ptr->me_ds_ref_array[i][j].picture_ptr =
                             inl_reference_object->input_picture;
                         context_ptr->me_context_ptr->me_ds_ref_array[i][j].sixteenth_picture_ptr =
                             inl_reference_object->sixteenth_input_picture;
                         context_ptr->me_context_ptr->me_ds_ref_array[i][j].quarter_picture_ptr =
                             inl_reference_object->quarter_input_picture;
-#endif
                     }
                 }
-#if TUNE_IME_REUSE_TPL_RESULT
                 skip_me = ppcs_ptr->tpl_me_done;
-#endif
             }
 #if FEATURE_FIRST_PASS_RESTRUCTURE
             if(use_output_stat(scs_ptr))
@@ -1834,15 +1773,11 @@ void *inloop_me_kernel(void *input_ptr) {
             // Segments
             segment_index = in_results_ptr->segment_index;
 
-#if TUNE_IME_REUSE_TPL_RESULT
             // case TPL ON , trailing frames ON
             // 1. trailing pic, task_type == 2 (tplME) ,skip_me == 0 , slice_type not set
             // 2. non-trailing pic, task_type == 2 (tplME) ,skip_me == 0, slice_type set
             // 3. non-trailing pic, task_type == 0 (iME) ,skip_me == 1, slice_type set
             if (!skip_me && (ppcs_ptr->slice_type != I_SLICE || task_type != 0)) {
-#else
-            if (ppcs_ptr->slice_type != I_SLICE || task_type != 0) {
-#endif
                 // Lambda Assignement
                 init_lambda(context_ptr, scs_ptr, ppcs_ptr);
 
@@ -1875,36 +1810,22 @@ void *inloop_me_kernel(void *input_ptr) {
                                 sb_origin_y,
                                 context_ptr->me_context_ptr,
                                 input_picture_ptr);
-#if !FEATURE_IN_LOOP_TPL || FIX_GM_COMPUTATION
-#if TUNE_IME_REUSE_TPL_RESULT
                         {
-#else
-                        if (task_type == 0) {
-#endif
                             svt_block_on_mutex(ppcs_ptr->me_processed_sb_mutex);
                             ppcs_ptr->me_processed_sb_count++;
                             svt_release_mutex(ppcs_ptr->me_processed_sb_mutex);
                         }
-#endif
                     }
                 }
             }
             if (task_type == 0) {
 
-#if FIX_GM_COMPUTATION
+
                 if (scs_ptr->static_config.enable_tpl_la) {
                     if (segment_index == 0) {
-#if FEATURE_GM_OPT
                         if (ppcs_ptr->gm_ctrls.enabled && ppcs_ptr->slice_type != I_SLICE)
-#else
-                        if (context_ptr->me_context_ptr->compute_global_motion && ppcs_ptr->slice_type != I_SLICE)
-#endif
                             global_motion_estimation_inl(
-#if FEATURE_GM_OPT
                                 ppcs_ptr, input_picture_ptr);
-#else
-                                ppcs_ptr, context_ptr->me_context_ptr, input_picture_ptr);
-#endif
                         else
                             // Initilize global motion to be OFF for all references frames.
                             memset(ppcs_ptr->is_global_motion, EB_FALSE, MAX_NUM_OF_REF_PIC_LIST * REF_LIST_MAX_DEPTH);
@@ -1914,17 +1835,9 @@ void *inloop_me_kernel(void *input_ptr) {
                 else {
                     svt_block_on_mutex(ppcs_ptr->me_processed_sb_mutex);
                     if (ppcs_ptr->me_processed_sb_count == ppcs_ptr->sb_total_count) {
-#if FEATURE_GM_OPT
                         if (ppcs_ptr->gm_ctrls.enabled && ppcs_ptr->slice_type != I_SLICE)
-#else
-                        if (context_ptr->me_context_ptr->compute_global_motion && ppcs_ptr->slice_type != I_SLICE)
-#endif
                             global_motion_estimation_inl(
-#if FEATURE_GM_OPT
                                 ppcs_ptr, input_picture_ptr);
-#else
-                                ppcs_ptr, context_ptr->me_context_ptr, input_picture_ptr);
-#endif
                         else
                             // Initilize global motion to be OFF for all references frames.
                             memset(ppcs_ptr->is_global_motion, EB_FALSE, MAX_NUM_OF_REF_PIC_LIST * REF_LIST_MAX_DEPTH);
@@ -1932,30 +1845,7 @@ void *inloop_me_kernel(void *input_ptr) {
                     svt_release_mutex(ppcs_ptr->me_processed_sb_mutex);
 
                 }
-#else
-                // Global motion estimation
-                // TODO: create an other kernel ?
-#if FEATURE_GM_OPT
-                if (ppcs_ptr->gm_ctrls.enabled &&
-#else
-                if (context_ptr->me_context_ptr->compute_global_motion &&
-#endif
-                        ppcs_ptr->slice_type != I_SLICE &&
-#if FEATURE_IN_LOOP_TPL
-                        segment_index== 0) {
-#else
-                        // Compute only when ME of all 64x64 SBs is performed
-                        ppcs_ptr->me_processed_sb_count == ppcs_ptr->sb_total_count) {
-#endif
-#if FEATURE_GM_OPT
-                    global_motion_estimation_inl(
-                        ppcs_ptr, input_picture_ptr);
-#else
-                    global_motion_estimation_inl(
-                            ppcs_ptr, context_ptr->me_context_ptr, input_picture_ptr);
-#endif
-                }
-#endif
+
                 svt_get_empty_object(context_ptr->output_fifo_ptr,
                         &out_results_wrapper_ptr);
 
@@ -1971,11 +1861,8 @@ void *inloop_me_kernel(void *input_ptr) {
                 svt_post_full_object(out_results_wrapper_ptr);
             } else {
                 // TPL ME
-#if TUNE_INL_TPL_ENHANCEMENT
                 // Doing OIS search for TPL
-#if TUNE_TPL_OIS
                 if (scs_ptr->in_loop_ois == 0)
-#endif
                 if (scs_ptr->static_config.enable_tpl_la) {
                     for (uint32_t y_sb_index = y_sb_start_index; y_sb_index < y_sb_end_index;
                             ++y_sb_index) {
@@ -1986,7 +1873,6 @@ void *inloop_me_kernel(void *input_ptr) {
                         }
                     }
                 }
-#endif
                 svt_block_on_mutex(ppcs_ptr->tpl_me_mutex);
                 ppcs_ptr->tpl_me_seg_acc++;
 

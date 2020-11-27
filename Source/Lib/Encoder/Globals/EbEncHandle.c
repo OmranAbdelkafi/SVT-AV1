@@ -95,14 +95,7 @@
 #define ENCDEC_INPUT_PORT_MDC                                0
 #define ENCDEC_INPUT_PORT_ENCDEC                             1
 #define ENCDEC_INPUT_PORT_INVALID                           -1
-#if !FEATURE_NEW_DELAY
-#define SCD_LAD                                             12
-#endif
-#if ENABLE_TPL_ZERO_LAD
 #define TPL_LAD                                              0
-#else
-#define TPL_LAD                                              16
-#endif
 
 /**************************************
  * Globals
@@ -543,30 +536,16 @@ EbErrorType load_default_buffer_configuration_settings(
         //Pic-Manager will inject one child at a time.
         min_child = 1;
 
-#if FEATURE_PA_ME
         //References. Min to sustain dec order flow (RA-5L-MRP-ON) 7 pictures from previous MGs + 11 needed for curr mini-GoP
         min_ref = 18;
-#else
-        //References. Min to sustain flow (RA-5L-MRP-ON) 7 pictures from previous MGs + 10 needed for curr mini-GoP
-        min_ref = 17;
-#endif
 
 
 #if FEATURE_INL_ME
         if (scs_ptr->static_config.look_ahead_distance > 0)
             min_me = min_parent;
         else if (scs_ptr->static_config.enable_tpl_la)
-#if TUNE_INL_TPL_ENHANCEMENT
-#if ENABLE_TPL_TRAILING
             // For TPL, in addition to frames in the minigop size, we might have upto SCD_LAD trailing frames. min_me is increaseed accordingly
             min_me = mg_size + 1 + SCD_LAD;
-#else
-            //Now we only use minigop size for TPL, if enabled trailing frames, need to increase min_me accordingly
-        min_me = mg_size + 1;
-#endif
-#else
-            min_me = mg_size + 1 + 3; //TODO add Constant for 3
-#endif
         else
             min_me = 1;
 #else
@@ -617,11 +596,7 @@ EbErrorType load_default_buffer_configuration_settings(
             scs_ptr->input_buffer_fifo_init_count = MAX(min_input, scs_ptr->input_buffer_fifo_init_count);
             scs_ptr->picture_control_set_pool_init_count = MAX(min_parent, scs_ptr->picture_control_set_pool_init_count);
             scs_ptr->pa_reference_picture_buffer_init_count = MAX(min_paref, scs_ptr->pa_reference_picture_buffer_init_count);
-#if FEATURE_PA_ME
             scs_ptr->reference_picture_buffer_init_count = 2 * MAX(min_ref, scs_ptr->reference_picture_buffer_init_count);
-#else
-            scs_ptr->reference_picture_buffer_init_count = MAX(min_ref, scs_ptr->reference_picture_buffer_init_count);
-#endif
             scs_ptr->picture_control_set_pool_init_count_child = MAX(min_child, scs_ptr->picture_control_set_pool_init_count_child);
             scs_ptr->overlay_input_picture_buffer_init_count = MAX(min_overlay, scs_ptr->overlay_input_picture_buffer_init_count);
 
@@ -653,11 +628,7 @@ EbErrorType load_default_buffer_configuration_settings(
     if (core_count > 1){
         scs_ptr->total_process_init_count += (scs_ptr->picture_analysis_process_init_count            = MAX(MIN(15, core_count >> 1), core_count / 6));
         scs_ptr->total_process_init_count += (scs_ptr->motion_estimation_process_init_count =  MAX(MIN(20, core_count >> 1), core_count / 3));//1);//
-#if FEATURE_TPL_SOP
         scs_ptr->total_process_init_count += (scs_ptr->source_based_operations_process_init_count = 1);
-#else
-        scs_ptr->total_process_init_count += (scs_ptr->source_based_operations_process_init_count     = MAX(MIN(3, core_count >> 1), core_count / 12));
-#endif
 #if FEATURE_INL_ME
         // TODO: Tune the count here
         scs_ptr->total_process_init_count += (scs_ptr->inlme_process_init_count                       = MAX(MIN(20, core_count >> 1), core_count / 3));
@@ -1261,9 +1232,7 @@ EB_API EbErrorType svt_av1_enc_init(EbComponentType *svt_enc_component)
         input_data.non_m8_pad_h = enc_handle_ptr->scs_instance_array[instance_index]->scs_ptr->max_input_pad_bottom;
 
         input_data.enable_tpl_la = enc_handle_ptr->scs_instance_array[instance_index]->scs_ptr->static_config.enable_tpl_la;
-#if TUNE_TPL_OIS
         input_data.in_loop_ois = enc_handle_ptr->scs_instance_array[instance_index]->scs_ptr->in_loop_ois;
-#endif
         EB_NEW(
             enc_handle_ptr->picture_parent_control_set_pool_ptr_array[instance_index],
             svt_system_resource_ctor,
@@ -2268,9 +2237,6 @@ void set_param_based_on_input(SequenceControlSet *scs_ptr)
 #else
     else if (use_input_stat(scs_ptr)) {
 #endif
-#if !ENABLE_TPL_ZERO_LAD
-        scs_ptr->static_config.look_ahead_distance = 16;
-#endif
         scs_ptr->static_config.enable_tpl_la = 1;
         scs_ptr->static_config.intra_refresh_type = 2;
     }
@@ -2339,13 +2305,8 @@ void set_param_based_on_input(SequenceControlSet *scs_ptr)
     if (scs_ptr->static_config.rate_control_mode != 0 && !use_input_stat(scs_ptr))
         scs_ptr->in_loop_me = 0;
     else
-#if FEATURE_PA_ME
         scs_ptr->in_loop_me = 0 ;
-#else
-        scs_ptr->in_loop_me = 1;
 #endif
-#endif
-#if FEATURE_PA_ME
     // Enforce starting frame in decode order (at PicMgr)
     // Does not wait for feedback from PKT
     if (scs_ptr->static_config.logical_processors == 1 && // LP1
@@ -2354,8 +2315,6 @@ void set_param_based_on_input(SequenceControlSet *scs_ptr)
         scs_ptr->enable_pic_mgr_dec_order = 1;
     else
         scs_ptr->enable_pic_mgr_dec_order = 0;
-#endif
-#if FEATURE_PA_ME
     // Enforce encoding frame in decode order
     // Wait for feedback from PKT
     if (scs_ptr->static_config.logical_processors == 1 && // LP1
@@ -2364,12 +2323,9 @@ void set_param_based_on_input(SequenceControlSet *scs_ptr)
         scs_ptr->enable_dec_order = 1;
     else
         scs_ptr->enable_dec_order = 0;
-#endif
 
-#if TUNE_TPL_OIS
         // Open loop intra done with TPL, data is not stored
         scs_ptr->in_loop_ois = 0;
-#endif
     // Set over_boundary_block_mode     Settings
     // 0                            0: not allowed
     // 1                            1: allowed

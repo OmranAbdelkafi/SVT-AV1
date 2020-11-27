@@ -150,11 +150,9 @@ static void svt_reference_object_dctor(EbPtr p) {
 #if FEATURE_INL_ME
     EB_DELETE(obj->quarter_reference_picture);
     EB_DELETE(obj->sixteenth_reference_picture);
-#if TUNE_INL_ME_RECON_INPUT
     EB_DELETE(obj->input_picture);
     EB_DELETE(obj->quarter_input_picture);
     EB_DELETE(obj->sixteenth_input_picture);
-#endif
 #endif
 }
 
@@ -228,20 +226,16 @@ EbErrorType svt_reference_object_ctor(EbReferenceObject *reference_object,
         }
     }
 
-#if TUNE_INL_ME_RECON_INPUT
         hme_desc_init_data.left_padding = 68;
         hme_desc_init_data.right_padding = 68;
         hme_desc_init_data.top_padding = 68;
         hme_desc_init_data.bot_padding = 68;
         hme_desc_init_data.split_mode = EB_FALSE;
-#if TUNE_INL_ME_RECON_INPUT
         hme_desc_init_data.buffer_enable_mask = PICTURE_BUFFER_DESC_LUMA_MASK; //Only save 8bit luma
         hme_desc_init_data.bit_depth = EB_8BIT;
-#endif
         EB_NEW(reference_object->input_picture,
                 svt_picture_buffer_desc_ctor,
                 (EbPtr)&hme_desc_init_data);
-#endif
     uint32_t mi_rows = reference_object->reference_picture->height >> MI_SIZE_LOG2;
     uint32_t mi_cols = reference_object->reference_picture->width >> MI_SIZE_LOG2;
 
@@ -267,7 +261,6 @@ EbErrorType svt_reference_object_ctor(EbReferenceObject *reference_object,
         EB_NEW(reference_object->quarter_reference_picture,
                 svt_picture_buffer_desc_ctor,
                 (EbPtr)&hme_desc_init_data);
-#if TUNE_INL_ME_RECON_INPUT
         hme_desc_init_data.left_padding = 64 >> 1;
         hme_desc_init_data.right_padding = 64 >> 1;
         hme_desc_init_data.top_padding = 64 >> 1;
@@ -275,7 +268,6 @@ EbErrorType svt_reference_object_ctor(EbReferenceObject *reference_object,
         EB_NEW(reference_object->quarter_input_picture,
                 svt_picture_buffer_desc_ctor,
                 (EbPtr)&hme_desc_init_data);
-#endif
     }
     if (ref_init_ptr->hme_sixteenth_luma_recon) {
         hme_desc_init_data.max_width = picture_buffer_desc_init_data_16bit_ptr.max_width >> 2;
@@ -291,7 +283,6 @@ EbErrorType svt_reference_object_ctor(EbReferenceObject *reference_object,
         EB_NEW(reference_object->sixteenth_reference_picture,
                 svt_picture_buffer_desc_ctor,
                 (EbPtr)&hme_desc_init_data);
-#if TUNE_INL_ME_RECON_INPUT
         hme_desc_init_data.left_padding = 64 >> 2;
         hme_desc_init_data.right_padding = 64 >> 2;
         hme_desc_init_data.top_padding = 64 >> 2;
@@ -299,7 +290,6 @@ EbErrorType svt_reference_object_ctor(EbReferenceObject *reference_object,
         EB_NEW(reference_object->sixteenth_input_picture,
                 svt_picture_buffer_desc_ctor,
                 (EbPtr)&hme_desc_init_data);
-#endif
     }
     reference_object->ds_pics.picture_ptr = reference_object->reference_picture;
     reference_object->ds_pics.quarter_picture_ptr = reference_object->quarter_reference_picture;

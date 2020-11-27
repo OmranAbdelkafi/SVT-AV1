@@ -726,9 +726,7 @@ void *packetization_kernel(void *input_ptr) {
 #if FEATURE_LAP_ENABLED_VBR
             scs_ptr->lap_enabled ||
 #endif
-#if FEATURE_PA_ME
             (scs_ptr->enable_dec_order) ||
-#endif
             (pcs_ptr->parent_pcs_ptr->is_used_as_reference_flag == EB_TRUE &&
             pcs_ptr->parent_pcs_ptr->reference_picture_wrapper_ptr)) {
             if (pcs_ptr->parent_pcs_ptr->is_used_as_reference_flag == EB_TRUE &&
@@ -837,9 +835,7 @@ void *packetization_kernel(void *input_ptr) {
 #if FEATURE_LAP_ENABLED_VBR
             scs_ptr->lap_enabled ||
 #endif
-#if FEATURE_PA_ME
             (scs_ptr->enable_dec_order) ||
-#endif
             (pcs_ptr->parent_pcs_ptr->is_used_as_reference_flag == EB_TRUE &&
             pcs_ptr->parent_pcs_ptr->reference_picture_wrapper_ptr))
             // Post the Full Results Object

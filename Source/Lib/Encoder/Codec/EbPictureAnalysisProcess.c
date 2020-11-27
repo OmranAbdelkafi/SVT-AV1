@@ -3212,9 +3212,7 @@ void pad_picture_to_multiple_of_min_blk_size_dimensions(SequenceControlSet * scs
         scs_ptr->pad_right,
         scs_ptr->pad_bottom);
 
-#if TUNE_INL_TPL_ENHANCEMENT
     if (input_picture_ptr->buffer_cb)
-#endif
     pad_input_picture(
         &input_picture_ptr->buffer_cb[(input_picture_ptr->origin_x >> subsampling_x) +
                                       ((input_picture_ptr->origin_y >> subsampling_y) *
@@ -3225,9 +3223,7 @@ void pad_picture_to_multiple_of_min_blk_size_dimensions(SequenceControlSet * scs
         scs_ptr->pad_right >> subsampling_x,
         scs_ptr->pad_bottom >> subsampling_y);
 
-#if TUNE_INL_TPL_ENHANCEMENT
     if (input_picture_ptr->buffer_cr)
-#endif
     pad_input_picture(
         &input_picture_ptr->buffer_cr[(input_picture_ptr->origin_x >> subsampling_x) +
                                       ((input_picture_ptr->origin_y >> subsampling_y) *
@@ -3239,9 +3235,7 @@ void pad_picture_to_multiple_of_min_blk_size_dimensions(SequenceControlSet * scs
         scs_ptr->pad_bottom >> subsampling_y);
 
     if (is16_bit_input) {
-#if TUNE_INL_TPL_ENHANCEMENT
         if (input_picture_ptr->buffer_bit_inc_y)
-#endif
         pad_input_picture(
             &input_picture_ptr->buffer_bit_inc_y[input_picture_ptr->origin_x +
                                                  (input_picture_ptr->origin_y *
@@ -3252,9 +3246,7 @@ void pad_picture_to_multiple_of_min_blk_size_dimensions(SequenceControlSet * scs
             scs_ptr->pad_right,
             scs_ptr->pad_bottom);
 
-#if TUNE_INL_TPL_ENHANCEMENT
         if (input_picture_ptr->buffer_bit_inc_cb)
-#endif
         pad_input_picture(
             &input_picture_ptr->buffer_bit_inc_cb[(input_picture_ptr->origin_x >> subsampling_x) +
                                                   ((input_picture_ptr->origin_y >> subsampling_y) *
@@ -3265,9 +3257,7 @@ void pad_picture_to_multiple_of_min_blk_size_dimensions(SequenceControlSet * scs
             scs_ptr->pad_right >> subsampling_x,
             scs_ptr->pad_bottom >> subsampling_y);
 
-#if TUNE_INL_TPL_ENHANCEMENT
         if (input_picture_ptr->buffer_bit_inc_cr)
-#endif
         pad_input_picture(
             &input_picture_ptr->buffer_bit_inc_cr[(input_picture_ptr->origin_x >> subsampling_x) +
                                                   ((input_picture_ptr->origin_y >> subsampling_y) *
@@ -3842,9 +3832,7 @@ void pad_input_pictures(SequenceControlSet *scs_ptr,
 
     // PAD the bit inc buffer in 10bit
     if (scs_ptr->static_config.encoder_bit_depth > EB_8BIT)
-#if TUNE_INL_TPL_ENHANCEMENT
         if (input_picture_ptr->buffer_bit_inc_y)
-#endif
         generate_padding(input_picture_ptr->buffer_bit_inc_y,
                 input_picture_ptr->stride_bit_inc_y,
                 input_picture_ptr->width,
@@ -3869,9 +3857,7 @@ void pad_input_pictures(SequenceControlSet *scs_ptr,
                 input_picture_ptr->origin_y >> scs_ptr->subsampling_y);
     // PAD the bit inc buffer in 10bit
     if (scs_ptr->static_config.encoder_bit_depth > EB_8BIT) {
-#if TUNE_INL_TPL_ENHANCEMENT
         if (input_picture_ptr->buffer_bit_inc_cb)
-#endif
         generate_padding(input_picture_ptr->buffer_bit_inc_cb,
                 input_picture_ptr->stride_bit_inc_cb,
                 input_picture_ptr->width >> scs_ptr->subsampling_x,
@@ -3879,9 +3865,7 @@ void pad_input_pictures(SequenceControlSet *scs_ptr,
                 input_picture_ptr->origin_x >> scs_ptr->subsampling_x,
                 input_picture_ptr->origin_y >> scs_ptr->subsampling_y);
 
-#if TUNE_INL_TPL_ENHANCEMENT
         if (input_picture_ptr->buffer_bit_inc_cr)
-#endif
         generate_padding(input_picture_ptr->buffer_bit_inc_cr,
                 input_picture_ptr->stride_bit_inc_cr,
                 input_picture_ptr->width >> scs_ptr->subsampling_x,
@@ -4172,7 +4156,6 @@ void *picture_analysis_kernel(void *input_ptr) {
                 pa_ref_obj_->sixteenth_decimated_picture_ptr = pa_ref_obj_->sixteenth_filtered_picture_ptr = ds_obj->sixteenth_picture_ptr;
 
             } else {
-#if  FEATURE_PA_ME
                 if (scs_ptr->in_loop_me == 0){
                   //not passing through the DS pool, so 1/4 and 1/16 are not used
                   pcs_ptr->ds_pics.picture_ptr = input_picture_ptr;
@@ -4180,7 +4163,6 @@ void *picture_analysis_kernel(void *input_ptr) {
                   pcs_ptr->ds_pics.sixteenth_picture_ptr = NULL;
                   pcs_ptr->ds_pics.picture_number = pcs_ptr->picture_number;
                   }
-#endif
                 // Original path
                 // Get PA ref, copy 8bit luma to pa_ref->input_padded_picture_ptr
                 pa_ref_obj_ =

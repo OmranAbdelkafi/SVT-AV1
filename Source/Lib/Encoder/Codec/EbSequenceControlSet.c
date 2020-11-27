@@ -312,13 +312,9 @@ EbErrorType copy_sequence_control_set(SequenceControlSet *dst, SequenceControlSe
 #if FEATURE_INL_ME
     dst->in_loop_me                     = src->in_loop_me;
 #endif
-#if TUNE_TPL_OIS
     dst->in_loop_ois                     = src->in_loop_ois;
-#endif
-#if FEATURE_PA_ME
     dst->enable_pic_mgr_dec_order = src->enable_pic_mgr_dec_order;
     dst->enable_dec_order = src->enable_dec_order;
-#endif
 #if FEATURE_LAP_ENABLED_VBR
     dst->lap_enabled                    = src->lap_enabled;
 #endif
@@ -347,10 +343,6 @@ extern EbErrorType derive_input_resolution(EbInputResolution *input_resolution, 
 
 static void svt_sequence_control_set_instance_dctor(EbPtr p) {
     EbSequenceControlSetInstance *obj = (EbSequenceControlSetInstance *)p;
-#if !FEATURE_IN_LOOP_TPL
-    if (obj->encode_context_ptr && obj->encode_context_ptr->mc_flow_rec_picture_buffer_saved)
-        EB_FREE_ARRAY(obj->encode_context_ptr->mc_flow_rec_picture_buffer_saved);
-#endif
     EB_DELETE(obj->encode_context_ptr);
     EB_DELETE(obj->scs_ptr);
     EB_DESTROY_MUTEX(obj->config_mutex);
@@ -363,10 +355,6 @@ EbErrorType svt_sequence_control_set_instance_ctor(EbSequenceControlSetInstance 
 
     EB_NEW(object_ptr->encode_context_ptr, encode_context_ctor, NULL);
     scs_init_data.encode_context_ptr = object_ptr->encode_context_ptr;
-#if !FEATURE_IN_LOOP_TPL
-    if (scs_init_data.encode_context_ptr)
-        scs_init_data.encode_context_ptr->mc_flow_rec_picture_buffer_saved = NULL;
-#endif
 
     scs_init_data.sb_size = 64;
 

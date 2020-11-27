@@ -5148,9 +5148,6 @@ static void recode_loop_decision_maker(PictureControlSet *pcs_ptr,
 #else
             use_input_stat(scs_ptr) &&
 #endif
-#if !ENABLE_TPL_ZERO_LAD
-            scs_ptr->static_config.look_ahead_distance != 0 &&
-#endif
             scs_ptr->static_config.enable_tpl_la &&
             ppcs_ptr->r0 != 0)
             sb_qp_derivation_tpl_la(pcs_ptr);
