@@ -1144,10 +1144,8 @@ static void picture_parent_control_set_dctor(EbPtr ptr) {
     EB_DESTROY_MUTEX(obj->tpl_me_mutex);
   //  EB_DESTROY_SEMAPHORE(obj->pame_done_semaphore);
     EB_DESTROY_MUTEX(obj->pame_done.mutex);
-#if FEATURE_FIRST_PASS_RESTRUCTURE
     EB_DESTROY_SEMAPHORE(obj->first_pass_done_semaphore);
     EB_DESTROY_MUTEX(obj->first_pass_mutex);
-#endif
     if(obj->frame_superres_enabled){
         svt_pcs_sb_structs_dctor(obj);
         EB_DELETE(obj->enhanced_picture_ptr);
@@ -1279,10 +1277,8 @@ EbErrorType picture_parent_control_set_ctor(PictureParentControlSet *object_ptr,
     EB_CREATE_MUTEX(object_ptr->tpl_me_mutex);
 
     EB_CREATE_MUTEX(object_ptr->pame_done.mutex);
-#if FEATURE_FIRST_PASS_RESTRUCTURE
     EB_CREATE_SEMAPHORE(object_ptr->first_pass_done_semaphore, 0, 1);
     EB_CREATE_MUTEX(object_ptr->first_pass_mutex);
-#endif
     object_ptr->av1_cm->interp_filter = SWITCHABLE;
 
     object_ptr->av1_cm->mi_stride = picture_sb_width * (BLOCK_SIZE_64 / 4);
@@ -1359,13 +1355,11 @@ EbErrorType picture_parent_control_set_ctor(PictureParentControlSet *object_ptr,
     object_ptr->frame_height = init_data_ptr->picture_height;
 
     object_ptr->superres_denom = SCALE_NUMERATOR;
-#if FEATURE_RE_ENCODE
      // Loop variables
     object_ptr->loop_count = 0;
     object_ptr->overshoot_seen = 0;
     object_ptr->undershoot_seen = 0;
     object_ptr->low_cr_seen = 0;
-#endif
 
     return return_error;
 }

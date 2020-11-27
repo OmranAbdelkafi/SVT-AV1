@@ -2088,27 +2088,16 @@ void set_param_based_on_input(SequenceControlSet *scs_ptr)
         scs_ptr->static_config.rate_control_mode = 0;
         scs_ptr->static_config.intra_refresh_type = 2;
     }
-#if FEATURE_LAP_ENABLED_VBR
     else if (use_input_stat(scs_ptr) || scs_ptr->lap_enabled) {
-#else
-    else if (use_input_stat(scs_ptr)) {
-#endif
         scs_ptr->static_config.enable_tpl_la = 1;
         scs_ptr->static_config.intra_refresh_type = 2;
     }
 
-#if FEATURE_RE_ENCODE
     if (scs_ptr->static_config.recode_loop > 0 &&
-#if FEATURE_LAP_ENABLED_VBR
         (!scs_ptr->static_config.rate_control_mode || (!scs_ptr->lap_enabled && !use_input_stat(scs_ptr)))) {
         // Only allow re-encoding for 2pass VBR or 1 PASS LAP, otherwise force recode_loop to DISALLOW_RECODE or 0
-#else
-        (!use_input_stat(scs_ptr) || scs_ptr->static_config.rate_control_mode != 1)) {
-        // Only allow re-encoding for 2pass VBR, otherwise force recode_loop to DISALLOW_RECODE or 0
-#endif
         scs_ptr->static_config.recode_loop = DISALLOW_RECODE;
     }
-#endif
 
     derive_input_resolution(
         &scs_ptr->input_resolution,
@@ -2120,18 +2109,8 @@ void set_param_based_on_input(SequenceControlSet *scs_ptr)
         scs_ptr->static_config.super_block_size = 64;
     else
         scs_ptr->static_config.super_block_size = (scs_ptr->static_config.enc_mode <= ENC_M4) ? 128 : 64;
-#if FIX_ALLOW_SB128_2PASS_VBR
-#if FEATURE_LAP_ENABLED_VBR
     if (scs_ptr->static_config.rate_control_mode && !use_input_stat(scs_ptr) && !scs_ptr->lap_enabled)
         scs_ptr->static_config.super_block_size = 64;
-#else
-    scs_ptr->static_config.super_block_size = (scs_ptr->static_config.rate_control_mode > 0 && !use_input_stat(scs_ptr))
-                                              ? 64
-                                              : scs_ptr->static_config.super_block_size;
-#endif
-#else
-    scs_ptr->static_config.super_block_size = (scs_ptr->static_config.rate_control_mode > 0) ? 64 : scs_ptr->static_config.super_block_size;
-#endif
    // scs_ptr->static_config.hierarchical_levels = (scs_ptr->static_config.rate_control_mode > 1) ? 3 : scs_ptr->static_config.hierarchical_levels;
     if (use_output_stat(scs_ptr))
         scs_ptr->static_config.hierarchical_levels = 0;
@@ -2358,15 +2337,11 @@ void copy_api_from_app(
     scs_ptr->static_config.vbr_max_section_pct = ((EbSvtAv1EncConfiguration*)config_struct)->vbr_max_section_pct;
     scs_ptr->static_config.under_shoot_pct     = ((EbSvtAv1EncConfiguration*)config_struct)->under_shoot_pct;
     scs_ptr->static_config.over_shoot_pct      = ((EbSvtAv1EncConfiguration*)config_struct)->over_shoot_pct;
-#if FEATURE_RE_ENCODE
     scs_ptr->static_config.recode_loop         = ((EbSvtAv1EncConfiguration*)config_struct)->recode_loop;
-#endif
-#if FEATURE_LAP_ENABLED_VBR
     if (scs_ptr->static_config.rate_control_mode && !use_output_stat(scs_ptr) && !use_input_stat(scs_ptr))
         scs_ptr->lap_enabled = 0; //turned off temporarily
     else
         scs_ptr->lap_enabled = 0;
-#endif
     //Segmentation
     //TODO: check RC mode and set only when RC is enabled in the final version.
     scs_ptr->static_config.enable_adaptive_quantization = config_struct->enable_adaptive_quantization;
@@ -2417,24 +2392,18 @@ void copy_api_from_app(
     scs_ptr->static_config.qp = ((EbSvtAv1EncConfiguration*)config_struct)->qp;
     scs_ptr->static_config.recon_enabled = ((EbSvtAv1EncConfiguration*)config_struct)->recon_enabled;
     scs_ptr->static_config.enable_tpl_la = ((EbSvtAv1EncConfiguration*)config_struct)->enable_tpl_la;
-#if FEATURE_LAP_ENABLED_VBR
     if (scs_ptr->static_config.rate_control_mode && !use_input_stat(scs_ptr) && !use_output_stat(scs_ptr) &&
         !scs_ptr->lap_enabled && scs_ptr->static_config.enable_tpl_la) {
         SVT_LOG("SVT [Warning]: force enable_tpl_la to be 0. Not supported for 1 PASS RC \n");
         scs_ptr->static_config.enable_tpl_la = 0;
     }
-#endif
     // Extract frame rate from Numerator and Denominator if not 0
     if (scs_ptr->static_config.frame_rate_numerator != 0 && scs_ptr->static_config.frame_rate_denominator != 0)
         scs_ptr->frame_rate = scs_ptr->static_config.frame_rate = (((scs_ptr->static_config.frame_rate_numerator << 8) / (scs_ptr->static_config.frame_rate_denominator)) << 8);
     // Get Default Intra Period if not specified
     if (scs_ptr->static_config.intra_period_length == -2)
         scs_ptr->intra_period_length = scs_ptr->static_config.intra_period_length = compute_default_intra_period(scs_ptr);
-#if FEATURE_LAP_ENABLED_VBR
     else if (scs_ptr->static_config.intra_period_length == -1 && (use_input_stat(scs_ptr) || use_output_stat(scs_ptr) || scs_ptr->lap_enabled))
-#else
-    else if (scs_ptr->static_config.intra_period_length == -1 && (use_input_stat(scs_ptr) || use_output_stat(scs_ptr)))
-#endif
 
         scs_ptr->intra_period_length = (MAX_NUM_GF_INTERVALS-1)* (1 << (scs_ptr->static_config.hierarchical_levels));
     if (scs_ptr->static_config.look_ahead_distance == (uint32_t)~0)
@@ -2443,12 +2412,7 @@ void copy_api_from_app(
         scs_ptr->static_config.look_ahead_distance = cap_look_ahead_distance(&scs_ptr->static_config);
     if (scs_ptr->static_config.enable_tpl_la &&
         scs_ptr->static_config.look_ahead_distance > (uint32_t)0 &&
-#if FEATURE_LAP_ENABLED_VBR
         scs_ptr->static_config.look_ahead_distance != (uint32_t)TPL_LAD) {
-#else
-        scs_ptr->static_config.look_ahead_distance != (uint32_t)TPL_LAD &&
-        scs_ptr->static_config.rate_control_mode == 0) {
-#endif
 
         SVT_LOG("SVT [Warning]: force look_ahead_distance to be %d from %d for perf/quality tradeoff when enable_tpl_la=1\n", (uint32_t)TPL_LAD, scs_ptr->static_config.look_ahead_distance);
         scs_ptr->static_config.look_ahead_distance = TPL_LAD;
@@ -2591,17 +2555,10 @@ static EbErrorType verify_settings(
         SVT_LOG("Error instance %u: QP must be [0 - %d]\n", channel_number + 1, MAX_QP_VALUE);
         return_error = EB_ErrorBadParameter;
     }
-#if TUNE_LOW_DELAY
     if (config->hierarchical_levels > 5) {
         SVT_LOG("Error instance %u: Hierarchical Levels supported [0-5]\n", channel_number + 1);
         return_error = EB_ErrorBadParameter;
     }
-#else
-    if (config->hierarchical_levels != 3 && config->hierarchical_levels != 4 && config->hierarchical_levels != 5) {
-        SVT_LOG("Error instance %u: Hierarchical Levels supported [3-5]\n", channel_number + 1);
-        return_error = EB_ErrorBadParameter;
-    }
-#endif
     if ((config->intra_period_length < -2 || config->intra_period_length > 2*((1 << 30) - 1)) && config->rate_control_mode == 0) {
         SVT_LOG("Error Instance %u: The intra period must be [-2, 2^31-2]  \n", channel_number + 1);
         return_error = EB_ErrorBadParameter;
@@ -3117,11 +3074,7 @@ EbErrorType svt_svt_enc_init_parameter(
     config_ptr->enable_tpl_la = 1;
     config_ptr->target_bit_rate = 7000000;
     config_ptr->max_qp_allowed = 63;
-#if FIX_ONE_MIN_QP_ALLOWED
     config_ptr->min_qp_allowed = 1;
-#else
-    config_ptr->min_qp_allowed = 10;
-#endif
 
     config_ptr->enable_adaptive_quantization = 2;
     config_ptr->enc_mode = MAX_ENC_PRESET;
@@ -3193,9 +3146,7 @@ EbErrorType svt_svt_enc_init_parameter(
     config_ptr->vbr_max_section_pct = 2000;
     config_ptr->under_shoot_pct = 25;
     config_ptr->over_shoot_pct = 25;
-#if FEATURE_RE_ENCODE
     config_ptr->recode_loop = ALLOW_RECODE_KFARFGF;
-#endif
 
     // Bitstream options
     //config_ptr->codeVpsSpsPps = 0;

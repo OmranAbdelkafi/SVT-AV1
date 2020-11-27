@@ -674,10 +674,8 @@ static void setup_two_pass(SequenceControlSet *scs_ptr) {
             svt_av1_init_second_pass(scs_ptr);
         }
     }
-#if FEATURE_LAP_ENABLED_VBR
     else if (scs_ptr->lap_enabled)
         svt_av1_init_single_pass_lap(scs_ptr);
-#endif
 }
 
 extern EbErrorType first_pass_signal_derivation_pre_analysis(SequenceControlSet *     scs_ptr,
@@ -829,11 +827,7 @@ void *resource_coordination_kernel(void *input_ptr) {
                 // 0                 OFF
                 // 1                 ON
                 scs_ptr->seq_header.enable_interintra_compound =
-#if TUNE_NEW_PRESETS
                 (scs_ptr->static_config.enc_mode <= ENC_M2) ? 1 : 0;
-#else
-                (scs_ptr->static_config.enc_mode <= ENC_M3) ? 1 : 0;
-#endif
 
             } else
                 scs_ptr->seq_header.enable_interintra_compound =
@@ -844,11 +838,7 @@ void *resource_coordination_kernel(void *input_ptr) {
             // 1                             | Enable
             if (scs_ptr->static_config.filter_intra_level == DEFAULT)
                 scs_ptr->seq_header.filter_intra_level =
-#if TUNE_NEW_PRESETS
                 (scs_ptr->static_config.enc_mode <= ENC_M5) ? 1 : 0;
-#else
-                (scs_ptr->static_config.enc_mode <= ENC_M6) ? 1 : 0;
-#endif
             else
                 scs_ptr->seq_header.filter_intra_level = (scs_ptr->static_config.filter_intra_level == 0) ? 0 : 1;
             // Set compound mode      Settings
@@ -1017,11 +1007,7 @@ void *resource_coordination_kernel(void *input_ptr) {
             if (pcs_ptr->picture_number == 0) {
                 if (use_input_stat(scs_ptr))
                     read_stat(scs_ptr);
-#if FEATURE_LAP_ENABLED_VBR
                 if (use_input_stat(scs_ptr) || use_output_stat(scs_ptr) || scs_ptr->lap_enabled)
-#else
-                if (use_input_stat(scs_ptr) || use_output_stat(scs_ptr))
-#endif
                     setup_two_pass(scs_ptr);
             }
             pcs_ptr->ts_duration = (int64_t)10000000*(1<<16) / scs_ptr->frame_rate;

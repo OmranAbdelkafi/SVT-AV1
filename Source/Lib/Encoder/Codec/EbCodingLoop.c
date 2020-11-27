@@ -2276,16 +2276,10 @@ EB_EXTERN void av1_encode_decode(SequenceControlSet *scs_ptr, PictureControlSet 
                               (sb_origin_y + blk_geom->origin_y) >> MI_SIZE_LOG2,
                               (sb_origin_x + blk_geom->origin_x) >> MI_SIZE_LOG2);
         }
-#if FEATURE_RE_ENCODE
-#if FEATURE_LAP_ENABLED_VBR
         if ((use_input_stat(scs_ptr) || scs_ptr->lap_enabled ) &&
-#else
-        if (use_input_stat(scs_ptr)  &&
-#endif
             blk_it == 0 && sb_origin_x == 0 && blk_geom->origin_x == 0 && sb_origin_y == 0 && blk_geom->origin_y == 0) {
             pcs_ptr->parent_pcs_ptr->pcs_total_rate = 0;
         }
-#endif
         if (part != PARTITION_SPLIT && pcs_ptr->parent_pcs_ptr->sb_geom[sb_addr].block_is_allowed[blk_it]) {
             int32_t offset_d1 = ns_blk_offset[(int32_t)part]; //blk_ptr->best_d1_blk; // TOCKECK
             int32_t num_d1_block =
@@ -2329,9 +2323,7 @@ EB_EXTERN void av1_encode_decode(SequenceControlSet *scs_ptr, PictureControlSet 
                     blk_ptr->qindex = sb_ptr->qindex;
                 }
 
-#if FEATURE_RE_ENCODE
                 pcs_ptr->parent_pcs_ptr->pcs_total_rate += blk_ptr->total_rate;
-#endif
                 if (blk_ptr->prediction_mode_flag == INTRA_MODE) {
                     context_ptr->is_inter = blk_ptr->use_intrabc;
                     context_ptr->tot_intra_coded_area += blk_geom->bwidth * blk_geom->bheight;
@@ -3166,24 +3158,6 @@ EB_EXTERN void av1_encode_decode(SequenceControlSet *scs_ptr, PictureControlSet 
                                         context_ptr->blk_geom->has_uv && uv_pass ? COMPONENT_ALL
                                                                                  : COMPONENT_LUMA);
                                 }
-#if !FEATURE_FIRST_PASS_RESTRUCTURE
-                                // CBF Tu decision
-                                if (use_output_stat(scs_ptr)) {
-                                    context_ptr->md_context
-                                        ->md_local_blk_unit[context_ptr->blk_geom->blkidx_mds]
-                                        .y_has_coeff[context_ptr->txb_itr] =
-                                        count_non_zero_coeffs[0] != 0 ? EB_TRUE : EB_FALSE;
-                                    context_ptr->md_context
-                                        ->md_local_blk_unit[context_ptr->blk_geom->blkidx_mds]
-                                        .u_has_coeff[context_ptr->txb_itr] =
-                                        count_non_zero_coeffs[1] != 0 ? EB_TRUE : EB_FALSE;
-                                    context_ptr->md_context
-                                        ->md_local_blk_unit[context_ptr->blk_geom->blkidx_mds]
-                                        .v_has_coeff[context_ptr->txb_itr] =
-                                        count_non_zero_coeffs[2] != 0 ? EB_TRUE : EB_FALSE;
-                                }
-                                else
-#endif
                                 av1_encode_txb_calc_cost(context_ptr,
                                                          count_non_zero_coeffs,
                                                          y_tu_full_distortion,

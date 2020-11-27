@@ -76,9 +76,6 @@ typedef struct MdBlkStruct {
     uint64_t             default_cost; // Similar to cost but does not get updated @ d1_non_square_block_decision() and d2_inter_depth_block_decision()
     CandidateMv          ed_ref_mv_stack[MODE_CTX_REF_FRAMES]
                                [MAX_REF_MV_STACK_SIZE]; //to be used in MD and EncDec
-#if !FIX_VALID_BLOCK_DERIVATION_OPT
-    uint8_t avail_blk_flag; //tells whether this CU is tested in MD and have a valid cu data
-#endif
     IntMv ref_mvs[MODE_CTX_REF_FRAMES][MAX_MV_REF_CANDIDATES]; //used only for nonCompound modes.
     uint32_t best_d1_blk;
     uint8_t *neigh_left_recon[3]; //only for MD
@@ -277,9 +274,7 @@ typedef struct ModeDecisionContext {
     InterPredictionContext *      inter_prediction_context;
     MdBlkStruct *                md_local_blk_unit;
     BlkStruct *                  md_blk_arr_nsq;
-#if FIX_VALID_BLOCK_DERIVATION_OPT
     uint8_t *avail_blk_flag;
-#endif
     MdcSbData *mdc_sb_array;
 
     NeighborArrayUnit *intra_luma_mode_neighbor_array;
@@ -592,11 +587,9 @@ typedef struct ModeDecisionContext {
     uint8_t ifs_is_regular_last; // If regular is last performed interp_filters @ IFS
     uint8_t use_prev_mds_res;
     uint16_t sb_index;
-#if FEATURE_MDS0_ELIMINATE_CAND
     uint8_t early_cand_elimination;
     uint64_t mds0_best_cost;
     uint8_t mds0_best_class;
-#endif
 } ModeDecisionContext;
 
 typedef void (*EbAv1LambdaAssignFunc)(PictureControlSet* pcs_ptr, uint32_t *fast_lambda, uint32_t *full_lambda,

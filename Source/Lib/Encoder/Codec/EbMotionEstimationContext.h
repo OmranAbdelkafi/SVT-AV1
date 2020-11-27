@@ -46,9 +46,7 @@ typedef enum EbMeType {
     ME_MCTF = 1,
     ME_TPL = 2,
     ME_OPEN_LOOP = 3
-#if FEATURE_FIRST_PASS_RESTRUCTURE
     ,ME_FIRST_PASS = 4
-#endif
 } EbMeType;
 typedef enum EbMeTierZeroPu {
     // 2Nx2N [85 partitions]
@@ -363,9 +361,6 @@ typedef struct MeContext {
     EbBool enable_hme_level0_flag;
     EbBool enable_hme_level1_flag;
     EbBool enable_hme_level2_flag;
-#if !FEATURE_GM_OPT // GmControls
-    EbBool compute_global_motion;
-#endif
     MeHmeRefPruneCtrls me_hme_prune_ctrls;
     MeSrCtrls me_sr_adjustment_ctrls;
     uint8_t max_hme_sr_area_multipler;
@@ -408,13 +403,6 @@ typedef struct MeContext {
     int16_t adjust_hme_l1_factor[MAX_NUM_OF_REF_PIC_LIST][REF_LIST_MAX_DEPTH];
     int16_t adjust_hme_l2_factor[MAX_NUM_OF_REF_PIC_LIST][REF_LIST_MAX_DEPTH];
     int16_t hme_factor;
-#if !FEATURE_GM_OPT // GmControls
-    //exit gm search if first reference detection is identity
-    uint8_t gm_identiy_exit;
-#if FEATURE_GM_OPT
-    uint8_t gm_rotzoom_model_only;
-#endif
-#endif
     // ------- Context for Alt-Ref ME ------
     uint16_t adj_search_area_width;
     uint16_t adj_search_area_height;
@@ -429,15 +417,9 @@ typedef struct MeContext {
     EbBool  is_used_as_reference_flag;
     EbDownScaledBufDescPtrArray me_ds_ref_array[MAX_NUM_OF_REF_PIC_LIST][REF_LIST_MAX_DEPTH];
     // tf
-#if FEATURE_OPT_TF
     uint8_t tf_hp;
     uint8_t tf_chroma;
-#if FEATURE_OPT_TF
     uint64_t tf_block_32x32_16x16_th;
-#endif
-#else
-    uint8_t high_precision;
-#endif
     int tf_frame_index;
     int tf_index_center;
     signed short tf_16x16_mv_x[16];
@@ -448,9 +430,7 @@ typedef struct MeContext {
     signed short tf_32x32_mv_y[4];
     uint64_t tf_32x32_block_error[4];
     int tf_32x32_block_split_flag[4];
-#if FEATURE_OPT_TF
     int tf_16x16_search_do[4];
-#endif
     int tf_block_row;
     int tf_block_col;
     uint16_t min_frame_size;

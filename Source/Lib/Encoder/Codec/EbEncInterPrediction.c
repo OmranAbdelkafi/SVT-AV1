@@ -6380,11 +6380,7 @@ EbErrorType inter_pu_prediction_av1(uint8_t hbd_mode_decision, ModeDecisionConte
         cb_recon_neighbor_array   = md_context_ptr->cb_recon_neighbor_array16bit;
         cr_recon_neighbor_array   = md_context_ptr->cr_recon_neighbor_array16bit;
     }
-#if FEATURE_OPT_TF
     if (scs_ptr->static_config.encoder_bit_depth > EB_8BIT || !md_context_ptr->ifs_is_regular_last)
-#else
-    if (!md_context_ptr->ifs_is_regular_last)
-#endif
     av1_inter_prediction(
             picture_control_set_ptr,
             candidate_buffer_ptr->candidate_ptr->interp_filters,

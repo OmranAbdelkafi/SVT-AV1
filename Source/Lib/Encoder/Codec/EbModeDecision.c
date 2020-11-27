@@ -3582,10 +3582,8 @@ void inject_global_candidates(const SequenceControlSet *  scs_ptr,
 
         //single ref/list
         if (rf[1] == NONE_FRAME) {
-#if FEATURE_GM_OPT
             if (pcs_ptr->parent_pcs_ptr->gm_ctrls.bipred_only)
                 continue;
-#endif
             MvReferenceFrame frame_type = rf[0];
             uint8_t          list_idx = get_list_idx(rf[0]);
             uint8_t          ref_idx = get_ref_frame_idx(rf[0]);
@@ -4206,11 +4204,7 @@ void inject_inter_candidates(PictureControlSet *pcs_ptr, ModeDecisionContext *co
     MeSbResults *me_results =
         pcs_ptr->parent_pcs_ptr->pa_me_data->me_results[context_ptr->me_sb_addr];
     EbBool       allow_bipred =
-#if !FEATURE_FIRST_PASS_RESTRUCTURE
-        (use_output_stat(scs_ptr) || context_ptr->blk_geom->bwidth == 4 || context_ptr->blk_geom->bheight == 4)
-#else
         (context_ptr->blk_geom->bwidth == 4 || context_ptr->blk_geom->bheight == 4)
-#endif
         ? EB_FALSE : EB_TRUE;
     uint32_t mi_row = context_ptr->blk_origin_y >> MI_SIZE_LOG2;
     uint32_t mi_col = context_ptr->blk_origin_x >> MI_SIZE_LOG2;
@@ -5320,11 +5314,9 @@ uint32_t product_full_mode_decision(
             lowest_cost = *(buffer_ptr_array[cand_index]->full_cost_ptr);
         }
     }
-#if FEATURE_RE_ENCODE
     if (context_ptr->pd_pass == PD_PASS_2) {
         blk_ptr->total_rate = buffer_ptr_array[lowest_cost_index]->candidate_ptr->total_rate;
     }
-#endif
 
     candidate_ptr = buffer_ptr_array[lowest_cost_index]->candidate_ptr;
     if (context_ptr->blk_lambda_tuning){

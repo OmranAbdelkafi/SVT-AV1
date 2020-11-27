@@ -16,17 +16,8 @@
 #include "EbPictureBufferDesc.h"
 #include "EbMotionEstimationContext.h"
 
-#if FEATURE_GM_OPT
 void global_motion_estimation(PictureParentControlSet *pcs_ptr, EbPictureBufferDesc *input_picture_ptr);
 void compute_global_motion(PictureParentControlSet *pcs_ptr, EbPictureBufferDesc *input_pic, EbPictureBufferDesc *ref_pic, EbWarpedMotionParams *bestWarpedMotion, int allow_high_precision_mv);
 void global_motion_estimation_inl(PictureParentControlSet *pcs_ptr, EbPictureBufferDesc *input_picture_ptr);
-#else
-void global_motion_estimation(PictureParentControlSet *pcs_ptr, MeContext *context_ptr,
-                              EbPictureBufferDesc *input_picture_ptr);
-void compute_global_motion(EbPictureBufferDesc *input_pic, EbPictureBufferDesc *ref_pic,
-                           EbWarpedMotionParams *bestWarpedMotion, int allow_high_precision_mv);
-void global_motion_estimation_inl(PictureParentControlSet *pcs_ptr, MeContext *context_ptr,
-                                  EbPictureBufferDesc *input_picture_ptr);
-#endif
 
 #endif // EbGlobalMotionEstimation_h

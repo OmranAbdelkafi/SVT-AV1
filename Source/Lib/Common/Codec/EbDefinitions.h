@@ -99,7 +99,6 @@ enum {
     FAST_DIAMOND = 6
 } UENUM1BYTE(SEARCH_METHODS);
 
-#if FEATURE_RE_ENCODE
 enum {
     // No recode.
     DISALLOW_RECODE = 0,
@@ -110,7 +109,6 @@ enum {
     // Allow recode for all frames based on bitrate constraints.
     ALLOW_RECODE = 3,
 } UENUM1BYTE(RecodeLoopType);
-#endif
 
 /********************************************************/
 /****************** Pre-defined Values ******************/

@@ -5820,11 +5820,7 @@ static int cqp_qindex_calc_tpl_la(PictureControlSet *pcs_ptr, RATE_CONTROL *rc, 
         active_best_quality = get_kf_active_quality_tpl(rc, active_worst_quality, bit_depth);
         // Allow somewhat lower kf minq with small image formats.
         if (pcs_ptr->parent_pcs_ptr->input_resolution == INPUT_SIZE_240p_RANGE)
-#if TUNE_TPL_TOWARD_CHROMA
             q_adj_factor -= (pcs_ptr->parent_pcs_ptr->tune_tpl_for_chroma) ? 0.2 : 0.15;
-#else
-            q_adj_factor -= 0.2;
-#endif
         // Make a further adjustment based on the kf zero motion measure.
 
         // Convert the adjustment factor to a qindex delta
@@ -6054,11 +6050,7 @@ static void sb_setup_lambda(PictureControlSet *pcs_ptr,
  * Calculates the QP per SB based on the tpl statistics
  * used in one pass and second pass of two pass encoding
  ******************************************************/
-#if FEATURE_RE_ENCODE
 void sb_qp_derivation_tpl_la(
-#else
-static void sb_qp_derivation_tpl_la(
-#endif
     PictureControlSet         *pcs_ptr) {
 
     PictureParentControlSet   *ppcs_ptr = pcs_ptr->parent_pcs_ptr;
@@ -6239,7 +6231,6 @@ static void av1_rc_init(SequenceControlSet *scs_ptr) {
   // Set absolute upper and lower quality limits
   rc->worst_quality = rc_cfg->worst_allowed_q;
   rc->best_quality  = rc_cfg->best_allowed_q;
-#if FEATURE_LAP_ENABLED_VBR
   if (scs_ptr->lap_enabled) {
       double frame_rate = (double)scs_ptr->static_config.frame_rate_numerator / (double)scs_ptr->static_config.frame_rate_denominator;
       // Each frame can have a different duration, as the frame rate in the source
@@ -6249,7 +6240,6 @@ static void av1_rc_init(SequenceControlSet *scs_ptr) {
       // first pass.
       svt_av1_new_framerate(scs_ptr, frame_rate);
   }
-#endif
 }
 
 static AOM_INLINE int combine_prior_with_tpl_boost_org(double min_factor,
@@ -6276,7 +6266,6 @@ void process_tpl_stats_frame_kf_gfu_boost(PictureControlSet *pcs_ptr) {
 
     if (scs_ptr->lap_enabled) {
         double min_boost_factor = sqrt(rc->baseline_gf_interval);
-#if FEATURE_LAP_ENABLED_VBR
         // The new tpl only looks at pictures in tpl group, which is fewer than before,
         // As a results, we defined a factor to adjust r0
         if (pcs_ptr->parent_pcs_ptr->slice_type != 2) {
@@ -6288,20 +6277,12 @@ void process_tpl_stats_frame_kf_gfu_boost(PictureControlSet *pcs_ptr) {
                 factor = 1.5;
             else
                 factor = 1;
-#if FEATURE_LAP_ENABLED_VBR
             if (pcs_ptr->parent_pcs_ptr->pd_window_count == scs_ptr->scd_delay)
                 div_factor = factor;
             else if (pcs_ptr->parent_pcs_ptr->pd_window_count <= 1)
                 div_factor = 1.0 / factor;
-#else
-            if (rc->frames_to_key > (int)pcs_ptr->parent_pcs_ptr->tpl_group_size * 3 / 2)
-                div_factor = factor;
-            else if (rc->frames_to_key <= (int)pcs_ptr->parent_pcs_ptr->tpl_group_size)
-                div_factor = 1.0 / factor;
-#endif
             pcs_ptr->parent_pcs_ptr->r0 = pcs_ptr->parent_pcs_ptr->r0 / div_factor;
         }
-#endif
         const int gfu_boost = get_gfu_boost_from_r0_lap(
                 min_boost_factor, MAX_GFUBOOST_FACTOR, pcs_ptr->parent_pcs_ptr->r0,
                 rc->num_stats_required_for_gfu_boost);
@@ -6409,11 +6390,7 @@ static void get_intra_q_and_bounds(PictureControlSet *pcs_ptr,
             active_best_quality /= 2;
         // Allow somewhat lower kf minq with small image formats.
         if (pcs_ptr->parent_pcs_ptr->input_resolution <= INPUT_SIZE_240p_RANGE)
-#if TUNE_TPL_TOWARD_CHROMA
             q_adj_factor -= (pcs_ptr->parent_pcs_ptr->tune_tpl_for_chroma) ? 0.2 : 0.15;
-#else
-            q_adj_factor -= 0.2;
-#endif
         // Make a further adjustment based on the kf zero motion measure.
 
         // Convert the adjustment factor to a qindex delta
@@ -6542,28 +6519,14 @@ static void set_rate_correction_factor(PictureParentControlSet *ppcs_ptr, double
 }
 
 // Calculate rate for the given 'q'.
-#if FEATURE_RE_ENCODE
 static int get_bits_per_mb(PictureParentControlSet *ppcs_ptr, int use_cyclic_refresh,
-#else
-static int get_bits_per_mb(PictureControlSet *pcs_ptr, int use_cyclic_refresh,
-#endif
                            double correction_factor, int q) {
-#if FEATURE_RE_ENCODE
   SequenceControlSet *scs_ptr = ppcs_ptr->scs_ptr;
-#else
-  SequenceControlSet *scs_ptr = pcs_ptr->parent_pcs_ptr->scs_ptr;
-#endif
   return use_cyclic_refresh
              ? 0/*av1_cyclic_refresh_rc_bits_per_mb(cpi, q, correction_factor)*/
-#if FEATURE_RE_ENCODE
              : svt_av1_rc_bits_per_mb(ppcs_ptr->frm_hdr.frame_type, q,
                 correction_factor, scs_ptr->static_config.encoder_bit_depth,
                  ppcs_ptr->sc_content_detected);
-#else
-             : svt_av1_rc_bits_per_mb(pcs_ptr->parent_pcs_ptr->frm_hdr.frame_type, q,
-                correction_factor, scs_ptr->static_config.encoder_bit_depth,
-                 pcs_ptr->parent_pcs_ptr->sc_content_detected);
-#endif
 }
 
 // Similar to find_qindex_by_rate() function in ratectrl.c, but returns the q
@@ -6571,11 +6534,7 @@ static int get_bits_per_mb(PictureControlSet *pcs_ptr, int use_cyclic_refresh,
 // the two rates is closer to the desired rate.
 // Also, respects the selected aq_mode when computing the rate.
 static int find_closest_qindex_by_rate(int desired_bits_per_mb,
-#if FEATURE_RE_ENCODE
                                        PictureParentControlSet *ppcs_ptr,
-#else
-                                       PictureControlSet *pcs_ptr,
-#endif
                                        double correction_factor,
                                        int best_qindex, int worst_qindex) {
   const int use_cyclic_refresh = 0/*cpi->oxcf.q_cfg.aq_mode == CYCLIC_REFRESH_AQ &&
@@ -6588,11 +6547,7 @@ static int find_closest_qindex_by_rate(int desired_bits_per_mb,
   while (low < high) {
     const int mid = (low + high) >> 1;
     const int mid_bits_per_mb =
-#if FEATURE_RE_ENCODE
         get_bits_per_mb(ppcs_ptr, use_cyclic_refresh, correction_factor, mid);
-#else
-        get_bits_per_mb(pcs_ptr, use_cyclic_refresh, correction_factor, mid);
-#endif
     if (mid_bits_per_mb > desired_bits_per_mb) {
       low = mid + 1;
     } else {
@@ -6604,11 +6559,7 @@ static int find_closest_qindex_by_rate(int desired_bits_per_mb,
   // Calculate rate difference of this q index from the desired rate.
   const int curr_q = low;
   const int curr_bits_per_mb =
-#if FEATURE_RE_ENCODE
       get_bits_per_mb(ppcs_ptr, use_cyclic_refresh, correction_factor, curr_q);
-#else
-      get_bits_per_mb(pcs_ptr, use_cyclic_refresh, correction_factor, curr_q);
-#endif
   const int curr_bit_diff = (curr_bits_per_mb <= desired_bits_per_mb)
                                 ? desired_bits_per_mb - curr_bits_per_mb
                                 : INT_MAX;
@@ -6622,11 +6573,7 @@ static int find_closest_qindex_by_rate(int desired_bits_per_mb,
     prev_bit_diff = INT_MAX;
   } else {
     const int prev_bits_per_mb =
-#if FEATURE_RE_ENCODE
         get_bits_per_mb(ppcs_ptr, use_cyclic_refresh, correction_factor, prev_q);
-#else
-        get_bits_per_mb(pcs_ptr, use_cyclic_refresh, correction_factor, prev_q);
-#endif
     assert(prev_bits_per_mb > desired_bits_per_mb);
     prev_bit_diff = prev_bits_per_mb - desired_bits_per_mb;
   }
@@ -6636,29 +6583,17 @@ static int find_closest_qindex_by_rate(int desired_bits_per_mb,
   return (curr_bit_diff <= prev_bit_diff) ? curr_q : prev_q;
 }
 
-#if FEATURE_RE_ENCODE
 static int av1_rc_regulate_q(PictureParentControlSet *ppcs_ptr, int target_bits_per_frame,
-#else
-static int av1_rc_regulate_q(PictureControlSet *pcs_ptr, int target_bits_per_frame,
-#endif
                       int active_best_quality, int active_worst_quality,
                       int width, int height) {
   const int MBs = ((width + 15) / 16) * ((height + 15) / 16);//av1_get_MBs(width, height);
   const double correction_factor =
-#if FEATURE_RE_ENCODE
       get_rate_correction_factor(ppcs_ptr/*, width, height*/);
-#else
-      get_rate_correction_factor(pcs_ptr->parent_pcs_ptr/*, width, height*/);
-#endif
   const int target_bits_per_mb =
       (int)(((uint64_t)target_bits_per_frame << BPER_MB_NORMBITS) / MBs);
 
   int q =
-#if FEATURE_RE_ENCODE
       find_closest_qindex_by_rate(target_bits_per_mb, ppcs_ptr, correction_factor,
-#else
-      find_closest_qindex_by_rate(target_bits_per_mb, pcs_ptr, correction_factor,
-#endif
                                   active_best_quality, active_worst_quality);
 
   return q;
@@ -6692,13 +6627,8 @@ static int get_q(PictureControlSet *pcs_ptr,
     }
     q = clamp(q, active_best_quality, active_worst_quality);
   } else {
-#if FEATURE_RE_ENCODE
     q = av1_rc_regulate_q(pcs_ptr->parent_pcs_ptr, rc->this_frame_target, active_best_quality,
                           active_worst_quality, width, height);
-#else
-    q = av1_rc_regulate_q(pcs_ptr, rc->this_frame_target, active_best_quality,
-                          active_worst_quality, width, height);
-#endif
     if (q > active_worst_quality) {
       // Special case when we are targeting the max allowed rate.
       if (rc->this_frame_target < rc->max_frame_bandwidth) {
@@ -6762,13 +6692,11 @@ static int rc_pick_q_and_bounds(PictureControlSet *pcs_ptr) {
         active_worst_quality = q;
     }
 
-#if FEATURE_RE_ENCODE
     rc->top_index = active_worst_quality;
     rc->bottom_index = active_best_quality;
 
     assert(rc->top_index <= rc->worst_quality && rc->top_index >= rc->best_quality);
     assert(rc->bottom_index <= rc->worst_quality && rc->bottom_index >= rc->best_quality);
-#endif
     assert(q <= rc->worst_quality && q >= rc->best_quality);
 
     if (gf_group->update_type[pcs_ptr->parent_pcs_ptr->gf_group_index] == ARF_UPDATE) rc->arf_q = q;
@@ -7176,7 +7104,6 @@ static void av1_set_target_rate(PictureControlSet *pcs_ptr, int width, int heigh
     av1_rc_set_frame_target(pcs_ptr, target_rate, width, height);
 }
 
-#if FEATURE_RE_ENCODE
 static double av1_get_compression_ratio(PictureParentControlSet *ppcs_ptr,
                                  size_t encoded_frame_size) {
   const int upscaled_width = ppcs_ptr->av1_cm->frm_size.superres_upscaled_width;
@@ -7495,7 +7422,6 @@ void recode_loop_update_q(
                       *q);
   *loop = (*q != last_q);
 }
-#endif
 
 void *rate_control_kernel(void *input_ptr) {
     // Context
@@ -7580,11 +7506,7 @@ void *rate_control_kernel(void *input_ptr) {
                     pcs_ptr->parent_pcs_ptr->sad_me +=
                         pcs_ptr->parent_pcs_ptr->rc_me_distortion[sb_addr];
                 }
-#if FEATURE_LAP_ENABLED_VBR
             if (use_input_stat(scs_ptr) || scs_ptr->lap_enabled) {
-#else
-            if (use_input_stat(scs_ptr)) {
-#endif
                 if (pcs_ptr->picture_number == 0) {
                     set_rc_buffer_sizes(scs_ptr);
                     av1_rc_init(scs_ptr);
@@ -7712,9 +7634,7 @@ void *rate_control_kernel(void *input_ptr) {
                 // ***Rate Control***
                 if (scs_ptr->static_config.rate_control_mode == 1) {
                     if (use_input_stat(scs_ptr)
-#if FEATURE_LAP_ENABLED_VBR
                         || scs_ptr->lap_enabled
-#endif
                         ) {
                         int32_t new_qindex = quantizer_to_qindex[(uint8_t)scs_ptr->static_config.qp];
                         int32_t update_type = scs_ptr->encode_context_ptr->gf_group.update_type[pcs_ptr->parent_pcs_ptr->gf_group_index];
@@ -7800,11 +7720,7 @@ void *rate_control_kernel(void *input_ptr) {
             // 2pass QPM with tpl_la
             if (scs_ptr->static_config.enable_adaptive_quantization == 2 &&
                 !use_output_stat(scs_ptr) &&
-#if FEATURE_LAP_ENABLED_VBR
                 (use_input_stat(scs_ptr) || scs_ptr->lap_enabled) &&
-#else
-                use_input_stat(scs_ptr) &&
-#endif
                 scs_ptr->static_config.enable_tpl_la &&
                 pcs_ptr->parent_pcs_ptr->r0 != 0)
                 sb_qp_derivation_tpl_la(pcs_ptr);
@@ -7826,11 +7742,7 @@ void *rate_control_kernel(void *input_ptr) {
                     pcs_ptr->parent_pcs_ptr->average_qp += pcs_ptr->picture_qp;
                 }
             }
-#if FEATURE_LAP_ENABLED_VBR
             if(use_input_stat(scs_ptr) || scs_ptr->lap_enabled)
-#else
-            if (use_input_stat(scs_ptr))
-#endif
                 update_rc_counts(pcs_ptr->parent_pcs_ptr);
             // Get Empty Rate Control Results Buffer
             svt_get_empty_object(context_ptr->rate_control_output_results_fifo_ptr,
@@ -7906,21 +7818,13 @@ void *rate_control_kernel(void *input_ptr) {
                     (int64_t)parentpicture_control_set_ptr->total_num_bits -
                     (int64_t)context_ptr->high_level_rate_control_ptr->channel_bit_rate_per_frame;
 
-#if FEATURE_LAP_ENABLED_VBR
                 if (use_input_stat(scs_ptr) || scs_ptr->lap_enabled
-#else
-                if (use_input_stat(scs_ptr)
-#endif
                     ) {
                     ;
                 } else
                 high_level_rc_feed_back_picture(parentpicture_control_set_ptr, scs_ptr);
                 if (scs_ptr->static_config.rate_control_mode == 1)
-#if FEATURE_LAP_ENABLED_VBR
                     if (use_input_stat(scs_ptr) || scs_ptr->lap_enabled
-#else
-                    if (use_input_stat(scs_ptr)
-#endif
                         ) {
                         av1_rc_postencode_update(parentpicture_control_set_ptr, (parentpicture_control_set_ptr->total_num_bits + 7) >> 3);
                         svt_av1_twopass_postencode_update(parentpicture_control_set_ptr);

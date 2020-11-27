@@ -696,9 +696,7 @@ void *packetization_kernel(void *input_ptr) {
         rate_control_tasks_ptr->task_type       = RC_PACKETIZATION_FEEDBACK_RESULT;
 
         if(use_input_stat(scs_ptr) ||
-#if FEATURE_LAP_ENABLED_VBR
             scs_ptr->lap_enabled ||
-#endif
             (scs_ptr->enable_dec_order) ||
             (pcs_ptr->parent_pcs_ptr->is_used_as_reference_flag == EB_TRUE &&
             pcs_ptr->parent_pcs_ptr->reference_picture_wrapper_ptr)) {
@@ -751,9 +749,7 @@ void *packetization_kernel(void *input_ptr) {
         // Send the number of bytes per frame to RC
         pcs_ptr->parent_pcs_ptr->total_num_bits = output_stream_ptr->n_filled_len << 3;
         queue_entry_ptr->total_num_bits         = pcs_ptr->parent_pcs_ptr->total_num_bits;
-#if FEATURE_LAP_ENABLED_VBR
         if (scs_ptr->static_config.rate_control_mode && !use_input_stat(scs_ptr) && !scs_ptr->lap_enabled)
-#endif
             // update the rate tables used in RC based on the encoded bits of each sb
             update_rc_rate_tables(pcs_ptr, scs_ptr);
         queue_entry_ptr->frame_type = frm_hdr->frame_type;
@@ -805,9 +801,7 @@ void *packetization_kernel(void *input_ptr) {
         // Post Rate Control Taks
         svt_post_full_object(rate_control_tasks_wrapper_ptr);
         if (use_input_stat(scs_ptr) ||
-#if FEATURE_LAP_ENABLED_VBR
             scs_ptr->lap_enabled ||
-#endif
             (scs_ptr->enable_dec_order) ||
             (pcs_ptr->parent_pcs_ptr->is_used_as_reference_flag == EB_TRUE &&
             pcs_ptr->parent_pcs_ptr->reference_picture_wrapper_ptr))

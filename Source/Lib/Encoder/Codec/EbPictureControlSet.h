@@ -495,26 +495,20 @@ typedef struct {
     EbDownScaledBufDescPtrArray tpl_ref_ds_ptr_array[MAX_NUM_OF_REF_PIC_LIST][REF_LIST_MAX_DEPTH];
     TplControls  tpl_ctrls;
 } TPLData;
-#if FEATURE_OPT_TF
 typedef struct  TfControls {
     uint8_t enabled;
     uint8_t window_size;                 // 3, 5, 7
     uint8_t noise_based_window_adjust;   // add an offset to default window_size based on the noise level; higher the noise, smaller is the offset
     uint8_t hp;                          // w/o 1/16 pel MV refinement
     uint8_t chroma;                      // use chroma
-#if FEATURE_OPT_TF
     uint64_t block_32x32_16x16_th;       // control tf_16x16 using tf_32x32 pred error
-#endif
 }TfControls;
-#endif
-#if FEATURE_GM_OPT // GmControls
 typedef struct  GmControls {
     uint8_t enabled;
     uint8_t identiy_exit;       // 0: generate GM params for both list_0 and list_1, 1: do not generate GM params for list_1 if list_0/ref_idx_0 is id
     uint8_t rotzoom_model_only; // 0: use both rotzoom and affine models, 1:use rotzoom model only
     uint8_t bipred_only;        // 0: test both unipred and bipred, 1: test bipred only
 } GmControls;
-#endif
 //CHKN
 // Add the concept of PictureParentControlSet which is a subset of the old PictureControlSet.
 // It actually holds only high level Picture based control data:(GOP management,when to start a picture, when to release the PCS, ....).
@@ -884,18 +878,11 @@ typedef struct PictureParentControlSet {
     // called trailing frames. Trailing frames are available because of TF and their minigop is not determined yet. As a result,
     // when used in RC there is a risk of race condition to access the PCS data. To prevent the problem, TplData should be used instead of PCS.
     uint8_t tpl_trailing_frame_count;
-#if TUNE_TPL_TOWARD_CHROMA
     // Tune TPL for better chroma.Only for 240P
     uint8_t tune_tpl_for_chroma;
-#endif
     uint8_t is_next_frame_intra;
-#if FEATURE_OPT_TF
     TfControls tf_ctrls;
-#endif
-#if FEATURE_GM_OPT
     GmControls gm_ctrls;
-#endif
-#if FEATURE_RE_ENCODE
     // Loop variables
     int q_low;
     int q_high;
@@ -904,8 +891,6 @@ typedef struct PictureParentControlSet {
     int undershoot_seen;
     int low_cr_seen;
     uint64_t pcs_total_rate;
-#endif
-#if FEATURE_FIRST_PASS_RESTRUCTURE
     int16_t     first_pass_seg_total_count;
     uint8_t     first_pass_seg_column_count;
     uint8_t     first_pass_seg_row_count;
@@ -915,7 +900,6 @@ typedef struct PictureParentControlSet {
     struct PictureParentControlSet *first_pass_ref_ppcs_ptr[2];
     uint8_t     first_pass_ref_count;
     uint8_t     first_pass_done;
-#endif
 } PictureParentControlSet;
 
 typedef struct PictureControlSetInitData {

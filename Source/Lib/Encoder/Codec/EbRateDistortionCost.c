@@ -1253,51 +1253,6 @@ uint32_t get_compound_mode_rate(uint8_t md_pass, ModeDecisionCandidate *candidat
 int is_interintra_wedge_used(BlockSize sb_type);
 int svt_is_interintra_allowed(uint8_t enable_inter_intra, BlockSize sb_type, PredictionMode mode,
                               const MvReferenceFrame ref_frame[2]);
-#if !FEATURE_FIRST_PASS_RESTRUCTURE
-/* two_pass_cost_update
- * This function adds some biases for distortion and rate.
- * The function is used in the first pass only and for the purpose of data collection */
-void two_pass_cost_update(PictureControlSet *pcs_ptr, ModeDecisionCandidate *candidate_ptr,
-                          uint32_t *rate, uint64_t *distortion) {
-    MvReferenceFrame ref_type[2];
-    av1_set_ref_frame(ref_type, candidate_ptr->ref_frame_type);
-    if ((candidate_ptr->is_compound &&
-         (ref_type[0] != LAST_FRAME || ref_type[1] != BWDREF_FRAME)) ||
-        (!candidate_ptr->is_compound &&
-         (ref_type[0] != LAST_FRAME && ref_type[0] != BWDREF_FRAME))) {
-        *rate += (*rate) * FIRST_PASS_COST_PENALTY / 100;
-        *distortion += (*distortion) * FIRST_PASS_COST_PENALTY / 100;
-    }
-    EbReferenceObject *ref_obj_l1 =
-        (EbReferenceObject *)pcs_ptr->ref_pic_ptr_array[REF_LIST_1][0]->object_ptr;
-    if (pcs_ptr->slice_type == B_SLICE &&
-        (candidate_ptr->is_compound || ref_type[0] == BWDREF_FRAME) &&
-        (ref_obj_l1->slice_type == I_SLICE && ref_obj_l1->ref_poc > pcs_ptr->picture_number)) {
-        *rate += (*rate * 2);
-        *distortion += (*distortion) * 2;
-    }
-}
-void two_pass_cost_update_64bit(PictureControlSet *pcs_ptr, ModeDecisionCandidate *candidate_ptr,
-                                uint64_t *rate, uint64_t *distortion) {
-    MvReferenceFrame ref_type[2];
-    av1_set_ref_frame(ref_type, candidate_ptr->ref_frame_type);
-    if ((candidate_ptr->is_compound &&
-         (ref_type[0] != LAST_FRAME || ref_type[1] != BWDREF_FRAME)) ||
-        (!candidate_ptr->is_compound &&
-         (ref_type[0] != LAST_FRAME && ref_type[0] != BWDREF_FRAME))) {
-        *rate += (*rate) * FIRST_PASS_COST_PENALTY / 100;
-        *distortion += (*distortion) * FIRST_PASS_COST_PENALTY / 100;
-    }
-    EbReferenceObject *ref_obj_l1 =
-        (EbReferenceObject *)pcs_ptr->ref_pic_ptr_array[REF_LIST_1][0]->object_ptr;
-    if (pcs_ptr->slice_type == B_SLICE &&
-        (candidate_ptr->is_compound || ref_type[0] == BWDREF_FRAME) &&
-        (ref_obj_l1->slice_type == I_SLICE && ref_obj_l1->ref_poc > pcs_ptr->picture_number)) {
-        *rate += (*rate * 2);
-        *distortion += (*distortion) * 2;
-    }
-}
-#endif
 uint64_t av1_inter_fast_cost(BlkStruct *blk_ptr, ModeDecisionCandidate *candidate_ptr, uint32_t qp,
                              uint64_t luma_distortion, uint64_t chroma_distortion, uint64_t lambda,
                              PictureControlSet *pcs_ptr, CandidateMv *ref_mv_stack,
@@ -1585,11 +1540,6 @@ uint64_t av1_inter_fast_cost(BlkStruct *blk_ptr, ModeDecisionCandidate *candidat
         total_distortion = luma_sad + chromasad_;
         if (blk_geom->has_uv == 0 && chromasad_ != 0) SVT_LOG("av1_inter_fast_cost: Chroma error");
         rate = luma_rate + chroma_rate;
-#if !FEATURE_FIRST_PASS_RESTRUCTURE
-        if (use_output_stat(pcs_ptr->parent_pcs_ptr->scs_ptr)) {
-            two_pass_cost_update(pcs_ptr, candidate_ptr, &rate, &total_distortion);
-        }
-#endif
         // Assign fast cost
         if (candidate_ptr->merge_flag) {
             uint64_t skip_mode_rate =
@@ -1836,13 +1786,6 @@ EbErrorType av1_full_cost(PictureControlSet *pcs_ptr, ModeDecisionContext *conte
 
     rate = luma_rate + chroma_rate + coeff_rate;
     if (candidate_buffer_ptr->candidate_ptr->block_has_coeff) rate += tx_size_bits;
-#if !FEATURE_FIRST_PASS_RESTRUCTURE
-    if (use_output_stat(pcs_ptr->parent_pcs_ptr->scs_ptr) &&
-        candidate_buffer_ptr->candidate_ptr->type != INTRA_MODE) {
-        two_pass_cost_update_64bit(
-            pcs_ptr, candidate_buffer_ptr->candidate_ptr, &rate, &total_distortion);
-    }
-#endif
     // Assign full cost
     *(candidate_buffer_ptr->full_cost_ptr) = RDCOST(lambda, rate, total_distortion);
     candidate_buffer_ptr->candidate_ptr->total_rate = rate;
@@ -1985,27 +1928,6 @@ EbErrorType av1_merge_skip_full_cost(PictureControlSet *pcs_ptr, ModeDecisionCon
     skip_distortion = skip_luma_sse + skip_chroma_sse;
     skip_rate       = skip_mode_rate;
     skip_cost       = RDCOST(lambda, skip_rate, skip_distortion);
-#if !FEATURE_FIRST_PASS_RESTRUCTURE
-    if (use_output_stat(pcs_ptr->parent_pcs_ptr->scs_ptr)) {
-        MvReferenceFrame ref_type[2];
-        av1_set_ref_frame(ref_type, candidate_buffer_ptr->candidate_ptr->ref_frame_type);
-        if ((candidate_buffer_ptr->candidate_ptr->is_compound &&
-             (ref_type[0] != LAST_FRAME || ref_type[1] != BWDREF_FRAME)) ||
-            (!candidate_buffer_ptr->candidate_ptr->is_compound &&
-             (ref_type[0] != LAST_FRAME && ref_type[0] != BWDREF_FRAME))) {
-            skip_cost += skip_cost * FIRST_PASS_COST_PENALTY / 100;
-            merge_cost += merge_cost * FIRST_PASS_COST_PENALTY / 100;
-        }
-        EbReferenceObject *ref_obj_l1 =
-            (EbReferenceObject *)pcs_ptr->ref_pic_ptr_array[REF_LIST_1][0]->object_ptr;
-        if (pcs_ptr->slice_type == B_SLICE &&
-            (candidate_buffer_ptr->candidate_ptr->is_compound || ref_type[0] == BWDREF_FRAME) &&
-            ref_obj_l1->slice_type == I_SLICE && ref_obj_l1->ref_poc > pcs_ptr->picture_number) {
-            skip_cost += skip_cost * 2;
-            merge_cost += merge_cost * 2;
-        }
-    }
-#endif
     // Assigne full cost
     *candidate_buffer_ptr->full_cost_ptr       = (skip_cost <= merge_cost) ? skip_cost : merge_cost;
     *candidate_buffer_ptr->full_cost_merge_ptr = merge_cost;
