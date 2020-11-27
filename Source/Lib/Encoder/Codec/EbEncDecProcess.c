@@ -2847,13 +2847,13 @@ EbErrorType signal_derivation_enc_dec_kernel_oq(
     else
         context_ptr->md_stage_3_class_prune_th = 25;
     // If using a mode offset, do not modify the NSQ-targeting features
-        if (pd_pass == PD_PASS_0)
-            context_ptr->coeff_area_based_bypass_nsq_th = 0;
-        else if (pd_pass == PD_PASS_1)
-            context_ptr->coeff_area_based_bypass_nsq_th = 0;
-        else
-            context_ptr->coeff_area_based_bypass_nsq_th = context_ptr->enable_area_based_cycles_allocation ? nsq_cycles_reduction_th[context_ptr->sb_class] : 0;
-        adaptive_md_cycles_redcution_controls(context_ptr, 0);
+    if (pd_pass == PD_PASS_0)
+        context_ptr->coeff_area_based_bypass_nsq_th = 0;
+    else if (pd_pass == PD_PASS_1)
+        context_ptr->coeff_area_based_bypass_nsq_th = 0;
+    else
+        context_ptr->coeff_area_based_bypass_nsq_th = context_ptr->enable_area_based_cycles_allocation ? nsq_cycles_reduction_th[context_ptr->sb_class] : 0;
+    adaptive_md_cycles_redcution_controls(context_ptr, 0);
         // Weighting (expressed as a percentage) applied to
         // square shape costs for determining if a and b
         // shapes should be skipped. Namely:

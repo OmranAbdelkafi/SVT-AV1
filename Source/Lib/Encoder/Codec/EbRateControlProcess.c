@@ -7484,10 +7484,10 @@ void *rate_control_kernel(void *input_ptr) {
 
            if (scs_ptr->in_loop_me)
 
-            if (/*scs_ptr->in_loop_me &&*/ scs_ptr->static_config.enable_tpl_la &&
+                if (/*scs_ptr->in_loop_me &&*/ scs_ptr->static_config.enable_tpl_la &&
                 pcs_ptr->temporal_layer_index == 0) {
-                tpl_mc_flow(scs_ptr->encode_context_ptr, scs_ptr, pcs_ptr->parent_pcs_ptr);
-            }
+                    tpl_mc_flow(scs_ptr->encode_context_ptr, scs_ptr, pcs_ptr->parent_pcs_ptr);
+                }
 
             // Release the down scaled input
             if (scs_ptr->in_loop_me) {
