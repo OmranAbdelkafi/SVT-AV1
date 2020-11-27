@@ -15,9 +15,7 @@
 #include "EbThreads.h"
 #include "EbReferenceObject.h"
 #include "EbPictureBufferDesc.h"
-#if FEATURE_INL_ME
 #include "EbUtility.h"
-#endif
 
 // TODO: is this just padding with zeros? Is this needed?
 void initialize_samples_neighboring_reference_picture16_bit(EbByte   recon_samples_buffer_ptr,
@@ -147,13 +145,11 @@ static void svt_reference_object_dctor(EbPtr p) {
             EB_DELETE(obj->downscaled_reference_picture16bit[denom_idx]);
         }
     }
-#if FEATURE_INL_ME
     EB_DELETE(obj->quarter_reference_picture);
     EB_DELETE(obj->sixteenth_reference_picture);
     EB_DELETE(obj->input_picture);
     EB_DELETE(obj->quarter_input_picture);
     EB_DELETE(obj->sixteenth_input_picture);
-#endif
 }
 
 /*****************************************
@@ -170,10 +166,8 @@ EbErrorType svt_reference_object_ctor(EbReferenceObject *reference_object,
     EbPictureBufferDescInitData picture_buffer_desc_init_data_16bit_ptr =
         *picture_buffer_desc_init_data_ptr;
 
-#if FEATURE_INL_ME
     EbPictureBufferDescInitData hme_desc_init_data =
         *picture_buffer_desc_init_data_ptr;
-#endif
 
     reference_object->dctor = svt_reference_object_dctor;
     //TODO:12bit
@@ -244,7 +238,6 @@ EbErrorType svt_reference_object_ctor(EbReferenceObject *reference_object,
         const int mem_size = ((mi_rows + 1) >> 1) * ((mi_cols + 1) >> 1);
         EB_CALLOC_ALIGNED_ARRAY(reference_object->mvs, mem_size);
     }
-#if FEATURE_INL_ME
     reference_object->quarter_reference_picture = NULL;
     reference_object->sixteenth_reference_picture = NULL;
     if (ref_init_ptr->hme_quarter_luma_recon) {
@@ -294,7 +287,6 @@ EbErrorType svt_reference_object_ctor(EbReferenceObject *reference_object,
     reference_object->ds_pics.picture_ptr = reference_object->reference_picture;
     reference_object->ds_pics.quarter_picture_ptr = reference_object->quarter_reference_picture;
     reference_object->ds_pics.sixteenth_picture_ptr = reference_object->sixteenth_reference_picture;
-#endif
     memset(&reference_object->film_grain_params, 0, sizeof(reference_object->film_grain_params));
     EB_CREATE_MUTEX(reference_object->referenced_area_mutex);
 
@@ -322,10 +314,8 @@ EbErrorType svt_reference_object_creator(EbPtr *object_dbl_ptr, EbPtr object_ini
 
 static void svt_pa_reference_object_dctor(EbPtr p) {
     EbPaReferenceObject *obj = (EbPaReferenceObject *)p;
-#if FEATURE_INL_ME
     if (obj->dummy_obj)
         return;
-#endif
     EB_DELETE(obj->input_padded_picture_ptr);
     EB_DELETE(obj->quarter_decimated_picture_ptr);
     EB_DELETE(obj->sixteenth_decimated_picture_ptr);
@@ -355,13 +345,11 @@ EbErrorType svt_pa_reference_object_ctor(EbPaReferenceObject *pa_ref_obj_,
         (EbPictureBufferDescInitData *)object_init_data_ptr;
 
     pa_ref_obj_->dctor = svt_pa_reference_object_dctor;
-#if FEATURE_INL_ME
     EbPaReferenceObjectDescInitData *pa_ref_init_data_ptr =
         (EbPaReferenceObjectDescInitData *)object_init_data_ptr;
     pa_ref_obj_->dummy_obj = pa_ref_init_data_ptr->empty_pa_buffers;
     if (pa_ref_init_data_ptr->empty_pa_buffers)
         return EB_ErrorNone;
-#endif
 
 
     // Reference picture constructor
@@ -409,7 +397,6 @@ EbErrorType svt_pa_reference_object_creator(EbPtr *object_dbl_ptr, EbPtr object_
 
     return EB_ErrorNone;
 }
-#if FEATURE_INL_ME
 static void svt_down_scaled_object_dctor(EbPtr p) {
     EbDownScaledObject *ds_obj = (EbDownScaledObject*)p;
     EB_DELETE(ds_obj->quarter_picture_ptr);
@@ -483,4 +470,3 @@ void release_pa_reference_objects(SequenceControlSet *scs_ptr, PictureParentCont
 
     return;
 }
-#endif

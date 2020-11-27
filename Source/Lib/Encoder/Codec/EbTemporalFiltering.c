@@ -35,25 +35,6 @@
 #undef _MM_HINT_T2
 #define _MM_HINT_T2 1
 
-#if !FIX_REMOVE_UNUSED_CODE
-static unsigned int index_mult[14] = {
-    0, 0, 0, 0, 49152, 39322, 32768, 28087, 24576, 21846, 19661, 17874, 0, 15124};
-
-static int64_t index_mult_highbd[14] = {0U,
-                                        0U,
-                                        0U,
-                                        0U,
-                                        3221225472U,
-                                        2576980378U,
-                                        2147483648U,
-                                        1840700270U,
-                                        1610612736U,
-                                        1431655766U,
-                                        1288490189U,
-                                        1171354718U,
-                                        0U,
-                                        991146300U};
-#endif
 static const uint32_t subblock_xy_16x16[N_16X16_BLOCKS][2] = {{0, 0},
                                                               {0, 1},
                                                               {0, 2},
@@ -352,11 +333,7 @@ static void create_me_context_and_picture_control(
     context_ptr->me_context_ptr->alt_ref_reference_ptr =
         (EbPaReferenceObject *)
             picture_control_set_ptr_frame->pa_reference_picture_wrapper_ptr->object_ptr;
-#if !FEATURE_INL_ME
-    context_ptr->me_context_ptr->me_alt_ref = EB_TRUE;
-#else
     context_ptr->me_context_ptr->me_type = ME_MCTF;
-#endif
 
     // set the buffers with the original, quarter and sixteenth pixels version of the source frame
     EbPaReferenceObject *src_object =
@@ -458,7 +435,6 @@ static void create_me_context_and_picture_control(
     }
 }
 
-#if FEATURE_INL_ME
 static void create_me_context_and_picture_control_inl(
     MotionEstimationContext_t *context_ptr, PictureParentControlSet *picture_control_set_ptr_frame,
     PictureParentControlSet *picture_control_set_ptr_central,
@@ -551,119 +527,6 @@ static void create_me_context_and_picture_control_inl(
         }
     }
 }
-#endif
-#if !FIX_REMOVE_UNUSED_CODE
-// Get sub-block filter weights for the 16 subblocks case
-static INLINE int get_subblock_filter_weight_16subblocks(unsigned int y, unsigned int x,
-                                                         unsigned int block_height,
-                                                         unsigned int block_width,
-                                                         const int *  blk_fw) {
-    const unsigned int block_width_div4  = block_width / 4;
-    const unsigned int block_height_div4 = block_height / 4;
-
-    int filter_weight = 0;
-    if (y < block_height_div4) {
-        if (x < block_width_div4)
-            filter_weight = blk_fw[0];
-        else if (x < block_width_div4 * 2)
-            filter_weight = blk_fw[1];
-        else if (x < block_width_div4 * 3)
-            filter_weight = blk_fw[2];
-        else
-            filter_weight = blk_fw[3];
-    } else if (y < block_height_div4 * 2) {
-        if (x < block_width_div4)
-            filter_weight = blk_fw[4];
-        else if (x < block_width_div4 * 2)
-            filter_weight = blk_fw[5];
-        else if (x < block_width_div4 * 3)
-            filter_weight = blk_fw[6];
-        else
-            filter_weight = blk_fw[7];
-    } else if (y < block_height_div4 * 3) {
-        if (x < block_width_div4)
-            filter_weight = blk_fw[8];
-        else if (x < block_width_div4 * 2)
-            filter_weight = blk_fw[9];
-        else if (x < block_width_div4 * 3)
-            filter_weight = blk_fw[10];
-        else
-            filter_weight = blk_fw[11];
-    } else {
-        if (x < block_width_div4)
-            filter_weight = blk_fw[12];
-        else if (x < block_width_div4 * 2)
-            filter_weight = blk_fw[13];
-        else if (x < block_width_div4 * 3)
-            filter_weight = blk_fw[14];
-        else
-            filter_weight = blk_fw[15];
-    }
-
-    return filter_weight;
-}
-
-// Get sub-block filter weights for the 4 subblocks case
-static INLINE int get_subblock_filter_weight_4subblocks(unsigned int y, unsigned int x,
-                                                        unsigned int block_height,
-                                                        unsigned int block_width,
-                                                        const int *  blk_fw) {
-    int filter_weight = 0;
-    if (y < block_height / 2) {
-        if (x < block_width / 2)
-            filter_weight = blk_fw[0];
-        else
-            filter_weight = blk_fw[1];
-    } else {
-        if (x < block_width / 2)
-            filter_weight = blk_fw[2];
-        else
-            filter_weight = blk_fw[3];
-    }
-    return filter_weight;
-}
-
-// Adjust value of the modified (weight of filtering) based on the distortion and strength parameter
-static INLINE int adjust_modifier(int sum_dist, int index, int rounding, int strength,
-                                  int filter_weight) {
-    assert(index >= 0 && index <= 13);
-    assert(index_mult[index] != 0);
-
-    //mod = (sum_dist / index) * 3;
-    int mod = (clamp(sum_dist, 0, UINT16_MAX) * index_mult[index]) >> 16;
-
-    mod += rounding;
-    mod >>= strength;
-
-    mod = AOMMIN(16, mod);
-
-    mod = 16 - mod;
-    mod *= filter_weight;
-
-    return mod;
-}
-
-// Adjust value of the modified (weight of filtering) based on the distortion and strength parameter - highbd
-static INLINE int adjust_modifier_highbd(int64_t sum_dist, int index, int rounding, int strength,
-                                         int filter_weight) {
-    assert(index >= 0 && index <= 13);
-    assert(index_mult_highbd[index] != 0);
-
-    //mod = (sum_dist / index) * 3;
-    int mod = (int)((AOMMIN(sum_dist, INT32_MAX) * index_mult_highbd[index]) >> 32);
-
-    mod += rounding;
-    mod >>= strength;
-
-    mod = AOMMIN(16, mod);
-
-    mod = 16 - mod;
-    mod *= filter_weight;
-
-    return mod;
-}
-
-#endif
 static INLINE void calculate_squared_errors(const uint8_t *s, int s_stride, const uint8_t *p,
                                             int p_stride, uint16_t *diff_sse, unsigned int w,
                                             unsigned int h) {
@@ -695,285 +558,6 @@ static INLINE void calculate_squared_errors_highbd(const uint16_t *s, int s_stri
     }
 }
 
-#if !FIX_REMOVE_UNUSED_CODE
-// Main function that applies filtering to a block according to the weights
-void svt_av1_apply_filtering_c(const uint8_t *y_src, int y_src_stride, const uint8_t *y_pre,
-                               int y_pre_stride, const uint8_t *u_src, const uint8_t *v_src,
-                               int uv_src_stride, const uint8_t *u_pre, const uint8_t *v_pre,
-                               int uv_pre_stride, unsigned int block_width,
-                               unsigned int block_height, int ss_x, int ss_y, int strength,
-                               const int *blk_fw, int use_whole_blk, uint32_t *y_accum,
-                               uint16_t *y_count, uint32_t *u_accum, uint16_t *u_count,
-                               uint32_t *v_accum,
-                               uint16_t *v_count) { // sub-block filter weights
-
-    unsigned int       i, j, k, m;
-    int                idx, idy;
-    int                modifier;
-    const int          rounding        = (1 << strength) >> 1;
-    const unsigned int uv_block_width  = block_width >> ss_x;
-    const unsigned int uv_block_height = block_height >> ss_y;
-    DECLARE_ALIGNED(16, uint16_t, y_diff_se[BLK_PELS]);
-    DECLARE_ALIGNED(16, uint16_t, u_diff_se[BLK_PELS]);
-    DECLARE_ALIGNED(16, uint16_t, v_diff_se[BLK_PELS]);
-
-    memset(y_diff_se, 0, BLK_PELS * sizeof(uint16_t));
-    memset(u_diff_se, 0, BLK_PELS * sizeof(uint16_t));
-    memset(v_diff_se, 0, BLK_PELS * sizeof(uint16_t));
-
-    assert(use_whole_blk == 0);
-    UNUSED(use_whole_blk);
-
-    // Calculate squared differences for each pixel of the block (pred-orig)
-    calculate_squared_errors(
-        y_src, y_src_stride, y_pre, y_pre_stride, y_diff_se, block_width, block_height);
-    calculate_squared_errors(
-        u_src, uv_src_stride, u_pre, uv_pre_stride, u_diff_se, uv_block_width, uv_block_height);
-    calculate_squared_errors(
-        v_src, uv_src_stride, v_pre, uv_pre_stride, v_diff_se, uv_block_width, uv_block_height);
-
-    for (i = 0; i < block_height; i++) {
-        for (j = 0; j < block_width; j++) {
-            const int pixel_value = y_pre[i * y_pre_stride + j];
-
-            int filter_weight;
-
-            if (block_width == (BW >> 1)) {
-                filter_weight =
-                    get_subblock_filter_weight_4subblocks(i, j, block_height, block_width, blk_fw);
-            } else {
-                filter_weight =
-                    get_subblock_filter_weight_16subblocks(i, j, block_height, block_width, blk_fw);
-            }
-
-            // non-local mean approach
-            int y_index = 0;
-
-            const int uv_r = i >> ss_y;
-            const int uv_c = j >> ss_x;
-            modifier       = 0;
-
-            for (idy = -1; idy <= 1; ++idy) {
-                for (idx = -1; idx <= 1; ++idx) {
-                    const int row = (int)i + idy;
-                    const int col = (int)j + idx;
-
-                    if (row >= 0 && row < (int)block_height && col >= 0 && col < (int)block_width) {
-                        modifier += y_diff_se[row * (int)block_width + col];
-                        ++y_index;
-                    }
-                }
-            }
-
-            assert(y_index > 0);
-
-            modifier += u_diff_se[uv_r * uv_block_width + uv_c];
-            modifier += v_diff_se[uv_r * uv_block_width + uv_c];
-
-            y_index += 2;
-
-            modifier = adjust_modifier(modifier, y_index, rounding, strength, filter_weight);
-
-            k = i * y_pre_stride + j;
-
-            y_count[k] += modifier;
-            y_accum[k] += modifier * pixel_value;
-
-            // Process chroma component
-            if (!(i & ss_y) && !(j & ss_x)) {
-                const int u_pixel_value = u_pre[uv_r * uv_pre_stride + uv_c];
-                const int v_pixel_value = v_pre[uv_r * uv_pre_stride + uv_c];
-
-                // non-local mean approach
-                int cr_index = 0;
-                int u_mod = 0, v_mod = 0;
-                int y_diff = 0;
-
-                for (idy = -1; idy <= 1; ++idy) {
-                    for (idx = -1; idx <= 1; ++idx) {
-                        const int row = uv_r + idy;
-                        const int col = uv_c + idx;
-
-                        if (row >= 0 && row < (int)uv_block_height && col >= 0 &&
-                            col < (int)uv_block_width) {
-                            u_mod += u_diff_se[row * uv_block_width + col];
-                            v_mod += v_diff_se[row * uv_block_width + col];
-                            ++cr_index;
-                        }
-                    }
-                }
-
-                assert(cr_index > 0);
-
-                for (idy = 0; idy < 1 + ss_y; ++idy) {
-                    for (idx = 0; idx < 1 + ss_x; ++idx) {
-                        const int row = (uv_r << ss_y) + idy;
-                        const int col = (uv_c << ss_x) + idx;
-                        y_diff += y_diff_se[row * (int)block_width + col];
-                        ++cr_index;
-                    }
-                }
-
-                u_mod += y_diff;
-                v_mod += y_diff;
-
-                u_mod = adjust_modifier(u_mod, cr_index, rounding, strength, filter_weight);
-                v_mod = adjust_modifier(v_mod, cr_index, rounding, strength, filter_weight);
-
-                m = (i >> ss_y) * uv_pre_stride + (j >> ss_x);
-
-                u_count[m] += u_mod;
-                u_accum[m] += u_mod * u_pixel_value;
-
-                m = (i >> ss_y) * uv_pre_stride + (j >> ss_x);
-
-                v_count[m] += v_mod;
-                v_accum[m] += v_mod * v_pixel_value;
-            }
-        }
-    }
-}
-
-// Main function that applies filtering to a block according to the weights - highbd
-void svt_av1_apply_filtering_highbd_c(
-    const uint16_t *y_src, int y_src_stride, const uint16_t *y_pre, int y_pre_stride,
-    const uint16_t *u_src, const uint16_t *v_src, int uv_src_stride, const uint16_t *u_pre,
-    const uint16_t *v_pre, int uv_pre_stride, unsigned int block_width, unsigned int block_height,
-    int ss_x, int ss_y, int strength, const int *blk_fw, int use_whole_blk, uint32_t *y_accum,
-    uint16_t *y_count, uint32_t *u_accum, uint16_t *u_count, uint32_t *v_accum,
-    uint16_t *v_count) { // sub-block filter weights
-
-    unsigned int       i, j, k, m;
-    int                idx, idy;
-    const int          rounding        = (1 << strength) >> 1;
-    const unsigned int uv_block_width  = block_width >> ss_x;
-    const unsigned int uv_block_height = block_height >> ss_y;
-    DECLARE_ALIGNED(16, uint32_t, y_diff_se[BLK_PELS]);
-    DECLARE_ALIGNED(16, uint32_t, u_diff_se[BLK_PELS]);
-    DECLARE_ALIGNED(16, uint32_t, v_diff_se[BLK_PELS]);
-
-    memset(y_diff_se, 0, BLK_PELS * sizeof(uint32_t));
-    memset(u_diff_se, 0, BLK_PELS * sizeof(uint32_t));
-    memset(v_diff_se, 0, BLK_PELS * sizeof(uint32_t));
-
-    assert(use_whole_blk == 0);
-    UNUSED(use_whole_blk);
-
-    // Calculate squared differences for each pixel of the block (pred-orig)
-    calculate_squared_errors_highbd(
-        y_src, y_src_stride, y_pre, y_pre_stride, y_diff_se, block_width, block_height);
-    calculate_squared_errors_highbd(
-        u_src, uv_src_stride, u_pre, uv_pre_stride, u_diff_se, uv_block_width, uv_block_height);
-    calculate_squared_errors_highbd(
-        v_src, uv_src_stride, v_pre, uv_pre_stride, v_diff_se, uv_block_width, uv_block_height);
-
-    for (i = 0; i < block_height; i++) {
-        for (j = 0; j < block_width; j++) {
-            const int pixel_value = y_pre[i * y_pre_stride + j];
-
-            int filter_weight;
-
-            if (block_width == (BW >> 1)) {
-                filter_weight =
-                    get_subblock_filter_weight_4subblocks(i, j, block_height, block_width, blk_fw);
-            } else {
-                filter_weight =
-                    get_subblock_filter_weight_16subblocks(i, j, block_height, block_width, blk_fw);
-            }
-
-            // non-local mean approach
-            int y_index = 0;
-
-            const int uv_r = i >> ss_y;
-            const int uv_c = j >> ss_x;
-            int       final_y_mod;
-            int64_t   y_mod = 0;
-
-            for (idy = -1; idy <= 1; ++idy) {
-                for (idx = -1; idx <= 1; ++idx) {
-                    const int row = (int)i + idy;
-                    const int col = (int)j + idx;
-
-                    if (row >= 0 && row < (int)block_height && col >= 0 && col < (int)block_width) {
-                        y_mod += y_diff_se[row * (int)block_width + col];
-                        ++y_index;
-                    }
-                }
-            }
-
-            assert(y_index > 0);
-
-            y_mod += u_diff_se[uv_r * uv_block_width + uv_c];
-            y_mod += v_diff_se[uv_r * uv_block_width + uv_c];
-
-            y_index += 2;
-
-            final_y_mod = adjust_modifier_highbd(y_mod, y_index, rounding, strength, filter_weight);
-
-            k = i * y_pre_stride + j;
-
-            y_count[k] += final_y_mod;
-            y_accum[k] += final_y_mod * pixel_value;
-
-            // Process chroma component
-            if (!(i & ss_y) && !(j & ss_x)) {
-                const int u_pixel_value = u_pre[uv_r * uv_pre_stride + uv_c];
-                const int v_pixel_value = v_pre[uv_r * uv_pre_stride + uv_c];
-
-                // non-local mean approach
-                int     cr_index = 0;
-                int64_t u_mod = 0, v_mod = 0;
-                int     final_u_mod, final_v_mod;
-                int     y_diff = 0;
-
-                for (idy = -1; idy <= 1; ++idy) {
-                    for (idx = -1; idx <= 1; ++idx) {
-                        const int row = uv_r + idy;
-                        const int col = uv_c + idx;
-
-                        if (row >= 0 && row < (int)uv_block_height && col >= 0 &&
-                            col < (int)uv_block_width) {
-                            u_mod += u_diff_se[row * uv_block_width + col];
-                            v_mod += v_diff_se[row * uv_block_width + col];
-                            ++cr_index;
-                        }
-                    }
-                }
-
-                assert(cr_index > 0);
-
-                for (idy = 0; idy < 1 + ss_y; ++idy) {
-                    for (idx = 0; idx < 1 + ss_x; ++idx) {
-                        const int row = (uv_r << ss_y) + idy;
-                        const int col = (uv_c << ss_x) + idx;
-                        y_diff += y_diff_se[row * (int)block_width + col];
-                        ++cr_index;
-                    }
-                }
-
-                u_mod += y_diff;
-                v_mod += y_diff;
-
-                final_u_mod =
-                    adjust_modifier_highbd(u_mod, cr_index, rounding, strength, filter_weight);
-                final_v_mod =
-                    adjust_modifier_highbd(v_mod, cr_index, rounding, strength, filter_weight);
-
-                m = (i >> ss_y) * uv_pre_stride + (j >> ss_x);
-
-                u_count[m] += final_u_mod;
-                u_accum[m] += final_u_mod * u_pixel_value;
-
-                m = (i >> ss_y) * uv_pre_stride + (j >> ss_x);
-
-                v_count[m] += final_v_mod;
-                v_accum[m] += final_v_mod * v_pixel_value;
-            }
-        }
-    }
-}
-
-#endif
 // Apply filtering to the central picture
 #if FEATURE_OPT_TF
 static void apply_filtering_central(MeContext *context_ptr, EbByte *pred, uint32_t **accum, uint16_t **count,
@@ -2534,10 +2118,8 @@ static EbErrorType produce_temporally_filtered_pic(
     int encoder_bit_depth =
         (int)picture_control_set_ptr_central->scs_ptr->static_config.encoder_bit_depth;
 
-#if FEATURE_INL_ME
     SequenceControlSet *scs_ptr =
         (SequenceControlSet *)picture_control_set_ptr_central->scs_ptr;
-#endif
 
     // chroma subsampling
     uint32_t ss_x          = picture_control_set_ptr_central->scs_ptr->subsampling_x;
@@ -2692,17 +2274,6 @@ static EbErrorType produce_temporally_filtered_pic(
 
                 } else {
                     // Initialize ME context
-#if !FEATURE_INL_ME
-                    create_me_context_and_picture_control(
-                        me_context_ptr,
-                        list_picture_control_set_ptr[frame_index],
-                        list_picture_control_set_ptr[index_center],
-                        input_picture_ptr_central,
-                        blk_row,
-                        blk_col,
-                        ss_x,
-                        ss_y);
-#else
                     // When in_loop_me is on, we should not use any PA related stuff
                     if (scs_ptr->in_loop_me)
                         create_me_context_and_picture_control_inl(
@@ -2741,7 +2312,6 @@ static EbErrorType produce_temporally_filtered_pic(
                             reference_object->quarter_decimated_picture_ptr;
                         context_ptr->me_ds_ref_array[0][0].picture_number = reference_object->picture_number;
                     }
-#endif
 
                     // Perform ME - context_ptr will store the outputs (MVs, buffers, etc)
                     // Block-based MC using open-loop HME + refinement
@@ -3012,7 +2582,6 @@ static void adjust_filter_strength(PictureParentControlSet *picture_control_set_
     // TODO: apply further refinements to the filter parameters according to 1st pass statistics
 }
 
-#if FEATURE_INL_ME
 //  Inloop padding + decimation
 static void pad_and_decimate_filtered_pic_inl(
     PictureParentControlSet *picture_control_set_ptr_central) {
@@ -3041,7 +2610,6 @@ static void pad_and_decimate_filtered_pic_inl(
                 (EbPictureBufferDesc *)ds_obj->sixteenth_picture_ptr);
     }
 }
-#endif
 void pad_and_decimate_filtered_pic(
     PictureParentControlSet *picture_control_set_ptr_central) {
     // reference structures (padded pictures + downsampled versions)
@@ -3068,7 +2636,6 @@ void pad_and_decimate_filtered_pic(
                          input_picture_ptr->height,
                          input_picture_ptr->origin_x,
                          input_picture_ptr->origin_y);
-#if FEATURE_INL_ME
         // Padding chroma after altref
         generate_padding(input_picture_ptr->buffer_cb,
                          input_picture_ptr->stride_cb,
@@ -3082,7 +2649,6 @@ void pad_and_decimate_filtered_pic(
                          input_picture_ptr->height >> scs_ptr->subsampling_y,
                          input_picture_ptr->origin_x >> scs_ptr->subsampling_x,
                          input_picture_ptr->origin_y >> scs_ptr->subsampling_y);
-#endif
         for (uint32_t row = 0; row < input_picture_ptr->height; row++)
             svt_memcpy(pa + row * padded_pic_ptr->stride_y,
                        in + row * input_picture_ptr->stride_y,
@@ -3362,14 +2928,10 @@ EbErrorType svt_av1_init_temporal_filtering(
         }
 
         // padding + decimation: even if highbd src, this is only performed on the 8 bit buffer (excluding the LSBs)
-#if FEATURE_INL_ME
         if (picture_control_set_ptr_central->scs_ptr->in_loop_me)
             pad_and_decimate_filtered_pic_inl(picture_control_set_ptr_central);
         else
             pad_and_decimate_filtered_pic(picture_control_set_ptr_central);
-#else
-        pad_and_decimate_filtered_pic(picture_control_set_ptr_central);
-#endif
 
         // Normalize the filtered SSE. Add 8 bit precision.
         picture_control_set_ptr_central->filtered_sse =

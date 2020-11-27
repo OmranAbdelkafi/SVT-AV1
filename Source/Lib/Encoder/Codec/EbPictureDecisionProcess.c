@@ -978,18 +978,10 @@ EbErrorType signal_derivation_multi_processes_oq(
 
     // CDEF Level                                   Settings
     // 0                                            OFF
-#if TUNE_CDEF_FILTER
     // 1                                            FULL_SEARCH
     // 2                                            CDEF_FAST_SEARCH_LVL1
     // 3                                            CDEF_FAST_SEARCH_LVL2
     // 4                                            CDEF_FAST_SEARCH_LVL3
-#else
-    // 1                                            16 step refinement
-    // 2                                            16 step refinement
-    // 3                                            8 step refinement
-    // 4                                            4 step refinement
-    // 5                                            1 step refinement
-#endif
     if (scs_ptr->seq_header.cdef_level && frm_hdr->allow_intrabc == 0) {
         if (scs_ptr->static_config.cdef_level == DEFAULT) {
 #if TUNE_NEW_PRESETS
@@ -999,11 +991,7 @@ EbErrorType signal_derivation_multi_processes_oq(
 #endif
                     pcs_ptr->cdef_level = 1;
                 else
-#if TUNE_CDEF_FILTER
                     pcs_ptr->cdef_level = 4;
-#else
-                    pcs_ptr->cdef_level = pcs_ptr->slice_type == I_SLICE ? 1 : 4;
-#endif
         }
         else
             pcs_ptr->cdef_level = (int8_t)(scs_ptr->static_config.cdef_level);
@@ -3806,16 +3794,9 @@ void perform_simple_picture_analysis_for_overlay(PictureParentControlSet     *pc
         input_picture_ptr);
 
     // Pre processing operations performed on the input picture
-#if FEATURE_INL_ME
     picture_pre_processing_operations(
         pcs_ptr,
         scs_ptr);
-#else
-    picture_pre_processing_operations(
-        pcs_ptr,
-        scs_ptr,
-        sb_total_count);
-#endif
 
     if (input_picture_ptr->color_format >= EB_YUV422) {
         // Jing: Do the conversion of 422/444=>420 here since it's multi-threaded kernel
@@ -4181,7 +4162,6 @@ void store_tpl_pictures(
 
     }
 
-#if FEATURE_INL_ME
     for (uint32_t pic_i = 0; pic_i < pcs->tpl_group_size; ++pic_i) {
         PictureParentControlSet* pcs_tpl_ptr = (PictureParentControlSet *)pcs->tpl_group[pic_i];
 
@@ -4197,7 +4177,6 @@ void store_tpl_pictures(
         pcs_tpl_ptr->num_tpl_grps++;
         set_tpl_controls(pcs_tpl_ptr,pcs_tpl_ptr->enc_mode);
     }
-#endif
 }
 
 void send_picture_out(
@@ -4263,19 +4242,12 @@ void send_picture_out(
         }
     }
     //get a new ME data buffer
-#if FEATURE_INL_ME
     if (pcs->me_data_wrapper_ptr == NULL) {
         svt_get_empty_object(ctx->me_fifo_ptr, &me_wrapper);
         pcs->me_data_wrapper_ptr = me_wrapper;
         pcs->pa_me_data = (MotionEstimationData *)me_wrapper->object_ptr;
         //printf("[%ld]: Got me data [NORMAL] %p\n", pcs->picture_number, pcs->pa_me_data);
     }
-#else
-    svt_get_empty_object(ctx->me_fifo_ptr, &me_wrapper);
-    pcs->me_data_wrapper_ptr = me_wrapper;
-
-    pcs->pa_me_data = (MotionEstimationData *)me_wrapper->object_ptr;
-#endif
 
     for (uint32_t segment_index = 0; segment_index < pcs->me_segments_total_count; ++segment_index) {
         // Get Empty Results Object
@@ -5281,9 +5253,6 @@ void* picture_decision_kernel(void *input_ptr)
                                 }
                                 // Set the Slice type
                                 pcs_ptr->slice_type = picture_type;
-#if !FEATURE_INL_ME
-                                ((EbPaReferenceObject*)pcs_ptr->pa_reference_picture_wrapper_ptr->object_ptr)->slice_type = pcs_ptr->slice_type;
-#endif
 
                                 switch (picture_type) {
                                 case I_SLICE:
@@ -5617,9 +5586,6 @@ void* picture_decision_kernel(void *input_ptr)
                                     input_entry_ptr->dependent_count = input_entry_ptr->dep_list0_count + input_entry_ptr->dep_list1_count;
 
 
-#if !FEATURE_INL_ME
-                                    ((EbPaReferenceObject*)pcs_ptr->pa_reference_picture_wrapper_ptr->object_ptr)->dependent_pictures_count = input_entry_ptr->dependent_count;
-#endif
                                 }
 
                                 CHECK_REPORT_ERROR(
@@ -5775,12 +5741,6 @@ void* picture_decision_kernel(void *input_ptr)
                             //set the ref frame types used for this picture,
                             set_all_ref_frame_type(pcs_ptr, pcs_ptr->ref_frame_type_arr, &pcs_ptr->tot_ref_frame_types);
                             // Initialize Segments
-#if !FEATURE_INL_ME
-                            pcs_ptr->me_segments_column_count = (uint8_t)(scs_ptr->me_segment_column_count_array[pcs_ptr->temporal_layer_index]);
-                            pcs_ptr->me_segments_row_count = (uint8_t)(scs_ptr->me_segment_row_count_array[pcs_ptr->temporal_layer_index]);
-                            pcs_ptr->me_segments_total_count = (uint16_t)(pcs_ptr->me_segments_column_count  * pcs_ptr->me_segments_row_count);
-                            pcs_ptr->me_segments_completion_count = 0;
-#else
                             pcs_ptr->me_segments_completion_count = 0;
                             pcs_ptr->inloop_me_segments_completion_count = 0;
 
@@ -5798,7 +5758,6 @@ void* picture_decision_kernel(void *input_ptr)
                                 (uint16_t)(pcs_ptr->me_segments_column_count * pcs_ptr->me_segments_row_count);
                             pcs_ptr->inloop_me_segments_total_count =
                                 (uint16_t)(pcs_ptr->inloop_me_segments_column_count * pcs_ptr->inloop_me_segments_row_count);
-#endif
                             pcs_ptr->me_processed_sb_count = 0;
 
                             //****************************************************

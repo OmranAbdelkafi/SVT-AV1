@@ -55,43 +55,6 @@ EbErrorType initial_rate_control_context_ctor(EbThreadContext *  thread_context_
     return EB_ErrorNone;
 }
 
-#if !FEATURE_INL_ME
-/************************************************
-* Release Pa Reference Objects
-** Check if reference pictures are needed
-** release them when appropriate
-************************************************/
-void release_pa_reference_objects(SequenceControlSet *scs_ptr, PictureParentControlSet *pcs_ptr) {
-    // PA Reference Pictures
-    if (pcs_ptr->slice_type != I_SLICE) {
-        uint32_t num_of_list_to_search = (pcs_ptr->slice_type == P_SLICE) ? REF_LIST_0 : REF_LIST_1;
-
-        // List Loop
-        for (uint32_t list_index = REF_LIST_0; list_index <= num_of_list_to_search; ++list_index) {
-            // Release PA Reference Pictures
-            uint8_t num_of_ref_pic_to_search =
-                (pcs_ptr->slice_type == P_SLICE)
-                    ? MIN(pcs_ptr->ref_list0_count, scs_ptr->reference_count)
-                    : (list_index == REF_LIST_0)
-                          ? MIN(pcs_ptr->ref_list0_count, scs_ptr->reference_count)
-                          : MIN(pcs_ptr->ref_list1_count, scs_ptr->reference_count);
-
-            for (uint32_t ref_pic_index = 0; ref_pic_index < num_of_ref_pic_to_search;
-                 ++ref_pic_index) {
-                if (pcs_ptr->ref_pa_pic_ptr_array[list_index][ref_pic_index] != NULL) {
-                    svt_release_object(pcs_ptr->ref_pa_pic_ptr_array[list_index][ref_pic_index]);
-                }
-            }
-        }
-    }
-
-    if (pcs_ptr->pa_reference_picture_wrapper_ptr != NULL) {
-        svt_release_object(pcs_ptr->pa_reference_picture_wrapper_ptr);
-    }
-
-    return;
-}
-#endif
 /************************************************
 * Update BEA Information Based on Lookahead
 ** Average zzCost of Collocated SB throughout lookahead frames
@@ -328,11 +291,9 @@ void update_histogram_queue_entry(SequenceControlSet *scs_ptr, EncodeContext *en
     return;
 }
 
-#if FIX_OPTIMIZE_BUILD_QUANTIZER
 void svt_av1_build_quantizer(AomBitDepth bit_depth, int32_t y_dc_delta_q, int32_t u_dc_delta_q,
     int32_t u_ac_delta_q, int32_t v_dc_delta_q, int32_t v_ac_delta_q,
     Quants *const quants, Dequants *const deq);
-#endif
 
 /* Initial Rate Control Kernel */
 
@@ -390,7 +351,6 @@ void *initial_rate_control_kernel(void *input_ptr) {
             SequenceControlSet *scs_ptr = (SequenceControlSet *)
                                               pcs_ptr->scs_wrapper_ptr->object_ptr;
             EncodeContext *encode_context_ptr = (EncodeContext *)scs_ptr->encode_context_ptr;
-#if FIX_OPTIMIZE_BUILD_QUANTIZER
             if (pcs_ptr->picture_number == 0) {
                 Quants *const quants_8bit = &scs_ptr->quants_8bit;
                 Dequants *const deq_8bit = &scs_ptr->deq_8bit;
@@ -419,7 +379,6 @@ void *initial_rate_control_kernel(void *input_ptr) {
                         deq_bd);
                 }
             }
-#endif
             if (scs_ptr->static_config.enable_tpl_la && scs_ptr->in_loop_me == 0)
             {
                 svt_post_semaphore(pcs_ptr->pame_done_semaphore);
@@ -428,13 +387,9 @@ void *initial_rate_control_kernel(void *input_ptr) {
             }
             if (scs_ptr->static_config.look_ahead_distance == 0 || scs_ptr->static_config.enable_tpl_la == 0) {
                 // Release Pa Ref pictures when not needed
-#if FEATURE_INL_ME
                 // Release Pa ref after when TPL is OFF
                 if (!scs_ptr->in_loop_me && scs_ptr->static_config.enable_tpl_la == 0)
                     release_pa_reference_objects(scs_ptr, pcs_ptr);
-#else
-                release_pa_reference_objects(scs_ptr, pcs_ptr);
-#endif
             }
             /*In case Look-Ahead is zero there is no need to place pictures in the
               re-order queue. this will cause an artificial delay since pictures come in dec-order*/

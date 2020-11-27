@@ -265,9 +265,7 @@ EbErrorType copy_sequence_control_set(SequenceControlSet *dst, SequenceControlSe
     dst->motion_estimation_fifo_init_count = src->motion_estimation_fifo_init_count;
     dst->initial_rate_control_fifo_init_count = src->initial_rate_control_fifo_init_count;
     dst->picture_demux_fifo_init_count = src->picture_demux_fifo_init_count;
-#if FEATURE_INL_ME
     dst->in_loop_me_fifo_init_count = src->in_loop_me_fifo_init_count;
-#endif
     dst->rate_control_tasks_fifo_init_count = src->rate_control_tasks_fifo_init_count;
     dst->rate_control_fifo_init_count = src->rate_control_fifo_init_count;
     dst->mode_decision_configuration_fifo_init_count =
@@ -309,9 +307,7 @@ EbErrorType copy_sequence_control_set(SequenceControlSet *dst, SequenceControlSe
     dst->over_boundary_block_mode       = src->over_boundary_block_mode;
     dst->mfmv_enabled                   = src->mfmv_enabled;
     dst->scd_delay                      = src->scd_delay;
-#if FEATURE_INL_ME
     dst->in_loop_me                     = src->in_loop_me;
-#endif
     dst->in_loop_ois                     = src->in_loop_ois;
     dst->enable_pic_mgr_dec_order = src->enable_pic_mgr_dec_order;
     dst->enable_dec_order = src->enable_dec_order;

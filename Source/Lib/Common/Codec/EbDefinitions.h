@@ -498,13 +498,6 @@ typedef struct InterpFilterParams {
     uint16_t       subpel_shifts;
     InterpFilter   interp_filter;
 } InterpFilterParams;
-#if !TUNE_TX_TYPE_LEVELS
-typedef enum TxSearchLevel {
-    TX_SEARCH_DCT_DCT_ONLY, // DCT_DCT only
-    TX_SEARCH_DCT_TX_TYPES, // Tx search DCT type(s): DCT_DCT, V_DCT, H_DCT
-    TX_SEARCH_ALL_TX_TYPES, // Tx search all type(s)
-} TxSearchLevel;
-#endif
 typedef enum IfsLevel {
     IFS_OFF,  // IFS OFF
     IFS_MDS0, // IFS @ md_stage_0()
@@ -749,12 +742,9 @@ typedef enum ATTRIBUTE_PACKED {
     V_FLIPADST,
     H_FLIPADST,
     TX_TYPES,
-#if TUNE_TX_TYPE_LEVELS
     INVALID_TX_TYPE,
-#endif
 } TxType;
 
-#if TUNE_TX_TYPE_LEVELS
 #define MAX_TX_TYPE_GROUP 6
 static const TxType tx_type_group[MAX_TX_TYPE_GROUP][TX_TYPES] = {
     { DCT_DCT, INVALID_TX_TYPE},
@@ -772,7 +762,6 @@ static const TxType tx_type_group_sc[MAX_TX_TYPE_GROUP][TX_TYPES] = {
     { FLIPADST_FLIPADST, INVALID_TX_TYPE},
     { FLIPADST_DCT, DCT_FLIPADST, ADST_FLIPADST, FLIPADST_ADST, V_ADST, H_ADST, V_FLIPADST, H_FLIPADST, INVALID_TX_TYPE}
 };
-#endif
 typedef enum ATTRIBUTE_PACKED {
     // DCT only
     EXT_TX_SET_DCTONLY,
@@ -1673,7 +1662,6 @@ typedef struct LoopFilterInfoN {
 
 //**********************************************************************************************************************//
 // cdef.h
-#if TUNE_CDEF_FILTER
 typedef enum {
   CDEF_FULL_SEARCH,      /**< Full search */
   CDEF_FAST_SEARCH_LVL1, /**< Search among a subset of all possible filters. */
@@ -1683,12 +1671,10 @@ typedef enum {
   CDEF_PICK_FROM_Q,      /**< Estimate filter strength based on quantizer. */
   CDEF_PICK_METHODS
 } CDEF_PICK_METHOD;
-#endif
 #define CDEF_STRENGTH_BITS 6
 
 #define CDEF_PRI_STRENGTHS 16
 #define CDEF_SEC_STRENGTHS 4
-#if TUNE_CDEF_FILTER
 #define REDUCED_PRI_STRENGTHS_LVL1 8
 #define REDUCED_PRI_STRENGTHS_LVL2 5
 #define REDUCED_SEC_STRENGTHS_LVL3 2
@@ -1732,7 +1718,6 @@ static INLINE void get_cdef_filter_strengths(CDEF_PICK_METHOD pick_method,
     default: assert(0 && "Invalid CDEF search method");
   }
 }
-#endif
 
 // Bits of precision used for the model
 #define WARPEDMODEL_PREC_BITS 16

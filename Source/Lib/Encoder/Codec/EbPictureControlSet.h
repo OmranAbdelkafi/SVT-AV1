@@ -55,7 +55,6 @@ typedef struct DepCntPicInfo {
     uint64_t      pic_num;
     int32_t      dep_cnt_diff; //increase(e.g 4L->5L) or decrease of dep cnt . not including the run-time decrease
 } DepCntPicInfo;
-#if FEATURE_INL_ME
 typedef struct EbDownScaledBufDescPtrArray {
     EbPictureBufferDesc *picture_ptr;
     EbPictureBufferDesc *quarter_picture_ptr;
@@ -79,7 +78,6 @@ typedef struct EbDownScaledObjectDescInitData {
     uint8_t enable_quarter_luma_input;
     uint8_t enable_sixteenth_luma_input;
 } EbDownScaledObjectDescInitData;
-#endif
 typedef struct MacroblockPlane {
     // Quantizer setings
     // These are used/accessed only in the quantization process
@@ -211,14 +209,12 @@ typedef struct MeshPattern {
     int interval;
 } MeshPattern;
 
-#if TUNE_CDF
 typedef struct CdfControls {
     uint8_t  enabled;    //1 if mv, or se, or coeff is ON
     uint8_t  update_mv;  //cdf update for mv
     uint8_t  update_se;  //cdf update for various syntax elements
     uint8_t  update_coef;//cdf update for coeffs
 } CdfControls;
-#endif
 typedef struct SpeedFeatures {
     // This allows us to use motion search at other sizes as a starting
     // point for this motion search and limits the search range around it.
@@ -254,9 +250,7 @@ typedef struct PictureControlSet {
     // Packetization (used to encode SPS, PPS, etc)
     Bitstream *bitstream_ptr;
 
-#if FEATURE_INL_ME
     EbObjectWrapper *          c_pcs_wrapper_ptr;
-#endif
 
     // Reference Lists
     // Reference Lists
@@ -316,9 +310,6 @@ typedef struct PictureControlSet {
     NeighborArrayUnit **md_mv_neighbor_array[NEIGHBOR_ARRAY_TOTAL_COUNT];
     NeighborArrayUnit **md_skip_flag_neighbor_array[NEIGHBOR_ARRAY_TOTAL_COUNT];
     NeighborArrayUnit **md_mode_type_neighbor_array[NEIGHBOR_ARRAY_TOTAL_COUNT];
-#if !TUNE_REMOVE_UNUSED_NEIG_ARRAY
-    NeighborArrayUnit **md_leaf_depth_neighbor_array[NEIGHBOR_ARRAY_TOTAL_COUNT];
-#endif
     NeighborArrayUnit **md_luma_recon_neighbor_array[NEIGHBOR_ARRAY_TOTAL_COUNT];
     NeighborArrayUnit **md_tx_depth_1_luma_recon_neighbor_array[NEIGHBOR_ARRAY_TOTAL_COUNT];
     NeighborArrayUnit **md_tx_depth_2_luma_recon_neighbor_array[NEIGHBOR_ARRAY_TOTAL_COUNT];
@@ -331,9 +322,6 @@ typedef struct PictureControlSet {
     NeighborArrayUnit **md_tx_depth_2_luma_recon_neighbor_array16bit[NEIGHBOR_ARRAY_TOTAL_COUNT];
     NeighborArrayUnit **md_cb_recon_neighbor_array16bit[NEIGHBOR_ARRAY_TOTAL_COUNT];
     NeighborArrayUnit **md_cr_recon_neighbor_array16bit[NEIGHBOR_ARRAY_TOTAL_COUNT];
-#if !FIX_REMOVE_MD_SKIP_COEFF_CIRCUITERY
-    NeighborArrayUnit **md_skip_coeff_neighbor_array[NEIGHBOR_ARRAY_TOTAL_COUNT];
-#endif
     NeighborArrayUnit **md_luma_dc_sign_level_coeff_neighbor_array[NEIGHBOR_ARRAY_TOTAL_COUNT];
     NeighborArrayUnit *
         *md_tx_depth_1_luma_dc_sign_level_coeff_neighbor_array[NEIGHBOR_ARRAY_TOTAL_COUNT];
@@ -353,9 +341,6 @@ typedef struct PictureControlSet {
     NeighborArrayUnit **ep_mv_neighbor_array;
     NeighborArrayUnit **ep_skip_flag_neighbor_array;
     NeighborArrayUnit **ep_mode_type_neighbor_array;
-#if !TUNE_REMOVE_UNUSED_NEIG_ARRAY
-    NeighborArrayUnit **ep_leaf_depth_neighbor_array;
-#endif
     NeighborArrayUnit **ep_luma_recon_neighbor_array;
     NeighborArrayUnit **ep_cb_recon_neighbor_array;
     NeighborArrayUnit **ep_cr_recon_neighbor_array;
@@ -405,11 +390,7 @@ typedef struct PictureControlSet {
 
     FRAME_CONTEXT *                 ec_ctx_array;
     FRAME_CONTEXT                   md_frame_context;
-#if TUNE_CDF
     CdfControls                     cdf_ctrl;
-#else
-    uint8_t                         update_cdf;
-#endif
     FRAME_CONTEXT                   ref_frame_context[REF_FRAMES];
     EbWarpedMotionParams            ref_global_motion[TOTAL_REFS_PER_FRAME];
     struct MdRateEstimationContext *md_rate_estimation_array;
@@ -629,12 +610,10 @@ typedef struct PictureParentControlSet {
     double   cr_ssim;
     double   cb_ssim;
 
-#if FEATURE_INL_ME
     EbObjectWrapper *down_scaled_picture_wrapper_ptr;
     EbDownScaledBufDescPtrArray ds_pics; // Pointer array for down scaled pictures
 
     TPLData                     tpl_data;
-#endif
 
     // Pre Analysis
     EbObjectWrapper *ref_pa_pic_ptr_array[MAX_NUM_OF_REF_PIC_LIST][REF_LIST_MAX_DEPTH];
@@ -668,12 +647,10 @@ typedef struct PictureParentControlSet {
     uint8_t  me_segments_row_count;
     uint16_t me_segments_completion_count;
 
-#if FEATURE_INL_ME
     uint16_t inloop_me_segments_total_count;
     uint8_t  inloop_me_segments_column_count;
     uint8_t  inloop_me_segments_row_count;
     uint16_t inloop_me_segments_completion_count;
-#endif
 
     // Motion Estimation Results
     uint8_t       max_number_of_pus_per_sb;
@@ -773,12 +750,6 @@ typedef struct PictureParentControlSet {
     // Global quant matrix tables
     const QmVal *giqmatrix[NUM_QM_LEVELS][3][TX_SIZES_ALL];
     const QmVal *gqmatrix[NUM_QM_LEVELS][3][TX_SIZES_ALL];
-#if !FIX_OPTIMIZE_BUILD_QUANTIZER
-    Quants quants_bd; // follows input bit depth
-    Dequants deq_bd;  // follows input bit depth
-    Quants quants_8bit;  // 8bit
-    Dequants deq_8bit; // 8bit
-#endif
     int32_t      min_qmlevel;
     int32_t      max_qmlevel;
     // Encoder
@@ -834,11 +805,6 @@ typedef struct PictureParentControlSet {
     AomDenoiseAndModel *denoise_and_model;
     RestUnitSearchInfo *rusi_picture[3]; //for 3 planes
     int8_t              cdef_level;
-#if !TUNE_CDEF_FILTER
-    int32_t             cdef_frame_strength;
-    int32_t             cdf_ref_frame_strength;
-    int32_t             use_ref_frame_cdef_strength;
-#endif
     uint8_t             palette_level;
     uint8_t             sc_content_detected;
     uint8_t             ibc_mode;
@@ -860,7 +826,6 @@ typedef struct PictureParentControlSet {
 
     uint8_t  temp_filt_prep_done;
     uint16_t temp_filt_seg_acc;
-#if FEATURE_INL_ME
     // TPL ME
     EbHandle tpl_me_done_semaphore;
     EbHandle tpl_me_mutex;
@@ -869,7 +834,6 @@ typedef struct PictureParentControlSet {
     uint8_t  tpl_me_segments_column_count;
     uint8_t  tpl_me_segments_row_count;
     uint8_t  tpl_me_done;
-#endif
     AtomicVarU32  pame_done;          //set when PA ME is done.
     EbHandle   pame_done_semaphore;
     uint8_t num_tpl_grps;

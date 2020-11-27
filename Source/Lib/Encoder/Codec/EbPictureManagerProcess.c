@@ -96,14 +96,9 @@ EbErrorType picture_manager_context_ctor(EbThreadContext *  thread_context_ptr,
 
     context_ptr->picture_input_fifo_ptr =
         svt_system_resource_get_consumer_fifo(enc_handle_ptr->picture_demux_results_resource_ptr, 0);
-#if FEATURE_INL_ME
     UNUSED(rate_control_index);
     context_ptr->picture_manager_output_fifo_ptr = svt_system_resource_get_producer_fifo(
         enc_handle_ptr->pic_mgr_res_srm, 0);
-#else
-    context_ptr->picture_manager_output_fifo_ptr = svt_system_resource_get_producer_fifo(
-        enc_handle_ptr->rate_control_tasks_resource_ptr, rate_control_index);
-#endif
     context_ptr->picture_control_set_fifo_ptr = svt_system_resource_get_producer_fifo(
         enc_handle_ptr->picture_control_set_pool_ptr_array[0], 0); //The Child PCS Pool here
 
@@ -219,7 +214,6 @@ void copy_dep_cnt_cleaning_list(
     }
 
 }
-#if FEATURE_INL_ME
 // get references used by a TPL group
 // References are the source frames
 static uint8_t tpl_setup_me_refs(
@@ -455,7 +449,6 @@ static EbErrorType tpl_init_pcs_tpl_data(
         release_pa_reference_objects(scs_ptr, pcs_tpl_base_ptr);
     return 0;
 }
-#endif
 
 #if FEATURE_RE_ENCODE
 void init_enc_dec_segement(PictureParentControlSet *parentpicture_control_set_ptr) {
@@ -621,11 +614,6 @@ void *picture_manager_kernel(void *input_ptr) {
     EbObjectWrapper *    input_picture_demux_wrapper_ptr;
     PictureDemuxResults *input_picture_demux_ptr;
 
-#if !FEATURE_INL_ME
-    EbObjectWrapper * output_wrapper_ptr;
-    RateControlTasks *rate_control_tasks_ptr;
-#endif
-
     EbBool availability_flag;
 
     PredictionStructureEntry *pred_position_ptr;
@@ -769,10 +757,8 @@ void *picture_manager_kernel(void *input_ptr) {
             scs_ptr = (SequenceControlSet *)input_picture_demux_ptr->scs_wrapper_ptr->object_ptr;
             encode_context_ptr = scs_ptr->encode_context_ptr;
             clean_pictures_in_ref_queue(scs_ptr->encode_context_ptr);
-#if FEATURE_INL_ME
             ((EbReferenceObject *)input_picture_demux_ptr->reference_picture_wrapper_ptr->object_ptr)->ds_pics.picture_number =
                 input_picture_demux_ptr->picture_number;
-#endif
             // Check if Reference Queue is full
             CHECK_REPORT_ERROR((encode_context_ptr->reference_picture_queue_head_index !=
                                 encode_context_ptr->reference_picture_queue_tail_index),
@@ -996,10 +982,8 @@ void *picture_manager_kernel(void *input_ptr) {
                         svt_object_inc_live_count(child_pcs_wrapper_ptr, 1);
 
                         child_pcs_ptr = (PictureControlSet *)child_pcs_wrapper_ptr->object_ptr;
-#if FEATURE_INL_ME
 
                         child_pcs_ptr->c_pcs_wrapper_ptr = child_pcs_wrapper_ptr;
-#endif
 
                         //1.Link The Child PCS to its Parent
                         child_pcs_ptr->picture_parent_control_set_wrapper_ptr =
@@ -1510,8 +1494,6 @@ void *picture_manager_kernel(void *input_ptr) {
                                                      1);
                         }
 
-#if FEATURE_INL_ME
-
                         // Get TPL ME
                         if (scs_ptr->in_loop_me|| scs_ptr->static_config.enable_tpl_la == 0)
                         tpl_get_open_loop_me(context_ptr, scs_ptr, child_pcs_ptr->parent_pcs_ptr);
@@ -1532,19 +1514,6 @@ void *picture_manager_kernel(void *input_ptr) {
                             // Post the Full Results Object
                             svt_post_full_object(out_results_wrapper_ptr);
                         }
-
-#else
-                        // Get Empty Results Object
-                        svt_get_empty_object(context_ptr->picture_manager_output_fifo_ptr,
-                                            &output_wrapper_ptr);
-
-                        rate_control_tasks_ptr = (RateControlTasks *)output_wrapper_ptr->object_ptr;
-                        rate_control_tasks_ptr->pcs_wrapper_ptr = child_pcs_wrapper_ptr;
-                        rate_control_tasks_ptr->task_type       = RC_PICTURE_MANAGER_RESULT;
-
-                        // Post the Full Results Object
-                        svt_post_full_object(output_wrapper_ptr);
-#endif
 
                         // Remove the Input Entry from the Input Queue
                         input_entry_ptr->input_object_ptr = (EbObjectWrapper *)NULL;
